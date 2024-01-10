@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>${PRODUCT_NAME}</string>
+    <key>CFBundleIdentifier</key>
+    <string>${PRODUCT_BUNDLE_IDENTIFIER}</string>
+    <key>CFBundleName</key>
+    <string>${PRODUCT_NAME}</string>
+    <key>CFBundleVersion</key>
+    <string>${QMAKE_FULL_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${QMAKE_SHORT_VERSION}</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>${MACOSX_DEPLOYMENT_TARGET}</string>
+    <key>NSCameraUsageDescription</key>
+    <string>We need access to your camera to capture photos and videos for a better user experience.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>photo library usage</string>
+    <key>NSFileUsageDescription</key>
+    <string>file system access</string>
+</dict>
+</plist>
