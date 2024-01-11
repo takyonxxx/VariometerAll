@@ -22,6 +22,8 @@ private slots:
     void on_scrollBarMeasurement_valueChanged(int value);
     void on_scrollBarAccel_valueChanged(int value);
 
+    void on_pushReset_clicked();
+
 private:
     void getSensorInfo(QList <qreal>);
     void getGpsInfo(QList <qreal>);
@@ -29,14 +31,14 @@ private:
     SensorManager *sensorManager{};
     ReadGps *readGps{};
 
-    KalmanFilter *pressure_filter;
+    std::shared_ptr<KalmanFilter> pressure_filter;
     qreal p_dt;
     quint64 lastPressTimestamp ;
     qreal pDeltaT ;
     QDateTime p_start;
     QDateTime p_end;
 
-    KalmanFilter *altitude_filter;
+    std::shared_ptr<KalmanFilter> altitude_filter;
     qreal accelVariance;
     qreal measurementVariance;
 

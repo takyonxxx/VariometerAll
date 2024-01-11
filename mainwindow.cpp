@@ -3,8 +3,11 @@
 #include "utils.h"
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    : QMainWindow(parent),
+    pressure (SEA_LEVEL_PRESSURE),
+    altitude (0),
+    stopReading (false),
+    ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
     setWindowTitle("Variometer");
@@ -12,39 +15,40 @@ MainWindow::MainWindow(QWidget *parent)
     ui->labelSensor->setStyleSheet("font-size: 32pt; color: #cccccc; background-color: #A73906;font-weight: bold;");
     ui->m_textStatus->setStyleSheet("font-size: 18pt; color: #cccccc; background-color: #003333;");    
     ui->pushExit->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color:#041077;");
+    ui->pushReset->setStyleSheet("font-size: 24pt; font: bold; color: #ffffff; background-color:#041077;");
     ui->label_vario->setStyleSheet("font-size: 62pt; color: #0FCCCF ; background-color: #001a1a;font-weight: bold;");
+    ui->label_vario_unit->setStyleSheet("font-size: 62pt; color: #0FCCCF ; background-color: #001a1a;font-weight: bold;");
     ui->label_pressure->setStyleSheet("font-size: 42pt; color: #cccccc; background-color: #001a1a;font-weight: bold;");
     ui->label_baro_altitude->setStyleSheet("font-size: 42pt; color: #cccccc; background-color: #001a1a;font-weight: bold;");
     ui->label_speed->setStyleSheet("font-size: 42pt; color: #0FCCCF ; background-color: #001a1a;font-weight: bold;");
     ui->label_gps_altitude->setStyleSheet("font-size: 42pt; color: #0FCCCF ; background-color: #001a1a;font-weight: bold;");
+    ui->labelMV->setStyleSheet("font-size: 16pt; color: #ffffff; background-color: #FF4633;");
+    ui->labelAV->setStyleSheet("font-size: 16pt; color: #ffffff; background-color: #FF4633;");
+    ui->labelM->setStyleSheet("font-size: 16pt; color: #ffffff; background-color: #001a1a;;font-weight: bold;");
+    ui->labelA->setStyleSheet("font-size: 16pt; color: #ffffff; background-color: #001a1a;font-weight: bold;");
 
-    accelVariance = KF_VAR_ACCEL;  // Initial value for KF_VAR_ACCEL
-    measurementVariance = KF_VAR_MEASUREMENT;  // Initial value for KF_VAR_MEASUREMENT
+    accelVariance = static_cast<qreal>(KF_VAR_ACCEL);  // Initial value for KF_VAR_ACCEL
+    measurementVariance = static_cast<qreal>(KF_VAR_MEASUREMENT);  // Initial value for KF_VAR_MEASUREMENT
 
     ui->scrollBarAccel->setRange(0, 100);  // Set the range from 0 to 100
     ui->scrollBarMeasurement->setRange(0, 100);  // Set the range from 0 to 100
 
     // Calculate the initial scrollbar values based on the initial variance values
-    int initialScrollBarAccelValue = static_cast<int>(accelVariance * 100.0);
+    int initialScrollBarAccelValue = static_cast<int>(accelVariance * 1000.0);
     int initialScrollBarMeasurementValue = static_cast<int>(measurementVariance * 100.0);
 
-    // Set the initial scrollbar values
+//    // Set the initial scrollbar values
     ui->scrollBarAccel->setValue(initialScrollBarAccelValue);
     ui->scrollBarMeasurement->setValue(initialScrollBarMeasurementValue);
 
-//    ui->scrollBarAccel->setStyleSheet("font-size: 18pt; font: bold; color: #ffffff; background-color: #061276 ;");
-//    ui->scrollBarMeasurement->setStyleSheet("font-size: 18pt; font: bold; color: #ffffff; background-color: #061276 ;");
     ui->scrollBarAccel->setStyleSheet("QScrollBar::handle:vertical { background: #808080; }");
     ui->scrollBarMeasurement->setStyleSheet("QScrollBar::handle:vertical { background: #808080; }");
 
-    stopReading = false;
-
     p_start = QDateTime::currentDateTime();
-    altitude = 0;
-    pressure = SEA_LEVEL_PRESSURE;
-    pressure_filter = new KalmanFilter(accelVariance);
+
+    pressure_filter = std::make_shared<KalmanFilter>(accelVariance);
+    altitude_filter = std::make_shared<KalmanFilter>(accelVariance);
     pressure_filter->Reset(SEA_LEVEL_PRESSURE);
-    altitude_filter = new KalmanFilter(accelVariance);
     altitude_filter->Reset(altitude);
 
     sensorManager = new SensorManager(this);
@@ -106,7 +110,7 @@ void MainWindow::getSensorInfo(QList<qreal> info)
                 // Update vario with Kalman filter using sensitivity and width parameters
                 vario = altitude_filter->GetXVel();
 
-                QString varioString = QString::number(qAbs(vario), 'f', 2) + "\nm/s";
+                QString varioString = QString::number(qAbs(vario), 'f', 2);
                 // Set text color based on the sign of vario
                 if (vario < 0) {
                     ui->label_vario->setStyleSheet("font-size: 62pt; color: red; background-color: #001a1a; font-weight: bold;");
@@ -160,17 +164,38 @@ void MainWindow::on_pushExit_clicked()
 
 void MainWindow::on_scrollBarMeasurement_valueChanged(int value)
 {
+    if(value == 0)
+        return;
+
      measurementVariance = static_cast<qreal>(value) / 100.0;
+     ui->labelMV->setText(QString::number(static_cast<double>(measurementVariance), 'f', 2));
 }
 
 void MainWindow::on_scrollBarAccel_valueChanged(int value)
 {
+     if(value == 0)
+        return;
+
      stopReading = true;
-     accelVariance = static_cast<qreal>(value) / 100.0;
-     delete pressure_filter;
-     delete altitude_filter;
-     pressure_filter = new KalmanFilter(accelVariance);
-     altitude_filter = new KalmanFilter(accelVariance);
+     accelVariance = static_cast<qreal>(value) / 1000.0;
+     pressure_filter = std::make_shared<KalmanFilter>(accelVariance);
+     altitude_filter = std::make_shared<KalmanFilter>(accelVariance);
+     ui->labelAV->setText(QString::number(static_cast<double>(accelVariance), 'f', 3));
+     stopReading = false;
+}
+
+void MainWindow::on_pushReset_clicked()
+{
+     stopReading = true;
+     accelVariance = static_cast<qreal>(KF_VAR_ACCEL);
+     measurementVariance = static_cast<qreal>(KF_VAR_MEASUREMENT);
+     pressure_filter = std::make_shared<KalmanFilter>(accelVariance);
+     altitude_filter = std::make_shared<KalmanFilter>(accelVariance);
+     int initialScrollBarAccelValue = static_cast<int>(accelVariance * 1000.0);
+     int initialScrollBarMeasurementValue = static_cast<int>(measurementVariance * 100.0);
+     ui->scrollBarAccel->setValue(initialScrollBarAccelValue);
+     ui->scrollBarMeasurement->setValue(initialScrollBarMeasurementValue);
+     ui->m_textStatus->clearHistory();
      stopReading = false;
 }
 
