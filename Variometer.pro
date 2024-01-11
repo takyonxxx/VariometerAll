@@ -1,4 +1,4 @@
-QT       += core gui sensors positioning
+QT       += core gui sensors positioning multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -13,14 +13,16 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     readgps.cpp \
-    sensormanager.cpp
+    sensormanager.cpp \
+    variosound.cpp
 
 HEADERS += \
     KalmanFilter.h \
     mainwindow.h \
     readgps.h \
     sensormanager.h \
-    utils.h
+    utils.h \
+    variosound.h
 
 FORMS += \
     mainwindow.ui
@@ -31,16 +33,18 @@ macos {
 
     QMAKE_INFO_PLIST = ./macos/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/macos/Assets.xcassets
-    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
-    LIBS += -framework CoreMotion
+    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"   
  }
 
 ios {
     message("ios enabled")
     QMAKE_INFO_PLIST = ./ios/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
-    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
-    LIBS += -framework CoreMotion
+    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"   
+}
+
+win32 {
+    message("win32 enabled")
 }
 
 

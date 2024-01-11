@@ -56,6 +56,8 @@ MainWindow::MainWindow(QWidget *parent)
     sensorManager->start();
     readGps = new ReadGps(this);
     connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
+    varioSound = new VarioSound(this);
+    varioSound->start();
 }
 
 MainWindow::~MainWindow()
@@ -67,8 +69,15 @@ MainWindow::~MainWindow()
         delete sensorManager;
     }
 
+    if (varioSound)
+    {
+        varioSound->quit();
+        varioSound->wait();
+        delete varioSound;
+    }
+
     if (readGps)
-        delete readGps;
+        delete readGps;    
     delete ui;
 }
 
@@ -155,13 +164,6 @@ void MainWindow::printInfo(QString info)
     ui->m_textStatus->setText(info);
 }
 
-void MainWindow::on_pushExit_clicked()
-{
-    sensorManager->setStop(true);
-    // Quit the application
-    QCoreApplication::exit();
-}
-
 void MainWindow::on_scrollBarMeasurement_valueChanged(int value)
 {
     if(value == 0)
@@ -186,6 +188,8 @@ void MainWindow::on_scrollBarAccel_valueChanged(int value)
 
 void MainWindow::on_pushReset_clicked()
 {
+     varioSound->updateVario(350.0);
+
      stopReading = true;
      accelVariance = static_cast<qreal>(KF_VAR_ACCEL);
      measurementVariance = static_cast<qreal>(KF_VAR_MEASUREMENT);
@@ -199,3 +203,10 @@ void MainWindow::on_pushReset_clicked()
      stopReading = false;
 }
 
+void MainWindow::on_pushExit_clicked()
+{
+    varioSound->setStop(true);
+    sensorManager->setStop(true);
+    // Quit the application
+    QCoreApplication::exit();
+}

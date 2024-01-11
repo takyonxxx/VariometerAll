@@ -3,6 +3,7 @@
 SensorManager::SensorManager(QObject *parent) :
     QThread(parent), m_stop(false)
 {
+    findSensors();
     startSensors();
 }
 
@@ -14,32 +15,54 @@ SensorManager::~SensorManager()
 }
 
 void SensorManager::findSensors()
-{    
+{
+    qDebug() << "Searching sensors...";
     for (const QByteArray &type : QSensor::sensorTypes()) {
         qDebug() << "Found a sensor type:" << type;
-    }   
+        for (const QByteArray &identifier : QSensor::sensorsForType(type)) {
+            QSensor* sensor = new QSensor(type, this);
+            sensor->setIdentifier(identifier);
+            mySensorList.append(sensor);
+        }
+    }
+    if (mySensorList.isEmpty())
+        qDebug() << "No sensor found.";
+
 }
 
 void SensorManager::startSensors()
 {
-    sensorPressure = new QSensor("QPressureSensor", this);
-    sensorPressure->start();
-//    sensorAcc = new QSensor("QAccelerometer");
-//    sensorAcc->start();
-//    sensorGyro = new QSensor("QGyroscope");
-//    sensorGyro->start();
-//    sensorMag = new QSensor("QMagnetometer");
-//    sensorMag->start();
-//    sensorCompass = new QSensor("QCompass");
-//    sensorCompass->start();
-//    sensorTilt = new QSensor("QTiltSensor");
-//    sensorTilt->start();
-//    sensorOrientation = new QSensor("QOrientationSensor");
-//    sensorOrientation->start();
-//    sensorProximity = new QSensor("QProximitySensor");
-//    sensorProximity->start();
-//    sensorRotation = new QSensor("QRotationSensor");
-//    sensorRotation->start();
+    bool hasPressureSensor = false;
+    for (QSensor* sensor : mySensorList) {
+        if (sensor->type() == QPressureSensor::sensorType) {
+            hasPressureSensor = true;
+            break;
+        }
+    }
+
+    if (hasPressureSensor) {
+        sensorPressure = new QSensor("QPressureSensor", this);
+        sensorPressure->start();
+    } else {
+        qDebug() << "QPressureSensor not found in mySensorList.";
+    }
+
+    //    sensorAcc = new QSensor("QAccelerometer");
+    //    sensorAcc->start();
+    //    sensorGyro = new QSensor("QGyroscope");
+    //    sensorGyro->start();
+    //    sensorMag = new QSensor("QMagnetometer");
+    //    sensorMag->start();
+    //    sensorCompass = new QSensor("QCompass");
+    //    sensorCompass->start();
+    //    sensorTilt = new QSensor("QTiltSensor");
+    //    sensorTilt->start();
+    //    sensorOrientation = new QSensor("QOrientationSensor");
+    //    sensorOrientation->start();
+    //    sensorProximity = new QSensor("QProximitySensor");
+    //    sensorProximity->start();
+    //    sensorRotation = new QSensor("QRotationSensor");
+    //    sensorRotation->start();
 }
 
 void SensorManager::readSensorValues()
@@ -54,18 +77,21 @@ void SensorManager::setStop(bool newStop)
 
 void SensorManager::run()
 {
-    while (!m_stop)
-    {
-        if(m_stop)
-            break;
-        emit sendInfo(readPressure());
-        msleep(500);
-    }
+    // while (!m_stop)
+    // {
+    //     if(m_stop)
+    //         break;
+    //     emit sendInfo(readPressure());
+    //     msleep(500);
+    // }
 }
 
 QList<qreal> SensorManager::readPressure()
 {
     QList <qreal> temp;
+    if(!sensorPressure)
+        return temp;
+
     temp.clear();
     temp.append(sensorPressure->reading()->property("pressure").value<qreal>());
     temp.append(sensorPressure->reading()->property("temperature").value<qreal>());
@@ -76,6 +102,9 @@ QList<qreal> SensorManager::readPressure()
 QList<qreal> SensorManager::readGyro()
 {
     QList <qreal> temp;
+    if(!sensorGyro)
+        return temp;
+
     temp.clear();
     temp.append(sensorGyro->reading()->property("x").value<qreal>());
     temp.append(sensorGyro->reading()->property("z").value<qreal>());
@@ -86,6 +115,9 @@ QList<qreal> SensorManager::readGyro()
 QList<qreal> SensorManager::readMagnetometer()
 {
     QList <qreal> temp;
+    if(!sensorMag)
+        return temp;
+
     temp.clear();
     temp.append(sensorMag->reading()->property("x").value<qreal>());
     temp.append(sensorMag->reading()->property("y").value<qreal>());
@@ -96,6 +128,9 @@ QList<qreal> SensorManager::readMagnetometer()
 QList<qreal> SensorManager::readCompass()
 {
     QList <qreal> temp;
+    if(!sensorCompass)
+        return temp;
+
     temp.clear();
     temp.append(sensorCompass->reading()->property("azimuth").value<qreal>());
     return temp;

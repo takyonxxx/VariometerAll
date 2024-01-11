@@ -7,6 +7,7 @@
 #include <QThread>
 #include <QSensor>
 #include <QPressureSensor>
+#include <QGyroscope>
 
 class SensorManager : public QThread
 {

@@ -5,6 +5,7 @@
 #include "sensormanager.h"
 #include "readgps.h"
 #include "kalmanfilter.h"
+#include "variosound.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -30,6 +31,7 @@ private:
     void printInfo(QString);
     SensorManager *sensorManager{};
     ReadGps *readGps{};
+    VarioSound *varioSound{};
 
     std::shared_ptr<KalmanFilter> pressure_filter;
     qreal p_dt;
