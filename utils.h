@@ -26,4 +26,5 @@ QString listToString(const QList<qreal>& values) {
     }
     return result;
 }
+
 #endif // UTILS_H

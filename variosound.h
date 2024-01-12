@@ -9,54 +9,92 @@
 #include <QBuffer>
 #include <QThread>
 #include <QtMath>
+#include <QtEndian>
+#include <QtMath>
 #include <QDebug>
-#include <Generator.h>
-#include <PiecewiseLinearFunction.h>
+#include <cmath>
+#include <QByteArray>
 
-#define DURATION_MS 1000
+const qint64 BufferDurationUs = 0.5 * 1000000;
+const qint16 PCMS16MaxValue = 32767;
+const quint16 PCMS16MaxAmplitude = 32768; // because minimum is -32768
 
-class VarioSound : public QThread
+class VarioSound : public QObject
 {
     Q_OBJECT
 
 public:
     VarioSound(QObject *parent = nullptr);
-    ~VarioSound();
+    ~VarioSound();    
 
-#include <cmath>
-#include <QByteArray>
+    struct Tone
+    {
+        Tone(qreal freq = 0.0, qreal amp = 0.0 , qreal vario = 0.0) :
+            frequency(freq), amplitude(amp), vario(vario) { }
+        qreal frequency;
+        // Amplitude in range [0.0, 1.0]
+        qreal amplitude;
+        qreal vario;
+    };
 
-    QByteArray generateSineWave(int durationInSeconds, int sampleRate, int channelCount, double baseFrequency, qreal vario) {
-        const int numFrames = durationInSeconds * sampleRate;
-        const int numChannels = channelCount;
+    qreal pcmToReal(qint16 pcm)
+    {
+        return qreal(pcm) / PCMS16MaxAmplitude;
+    }
 
-        QByteArray buffer;
-        buffer.resize(numFrames * numChannels * sizeof(short));
+    qint16 realToPcm(qreal real)
+    {
+        return real * PCMS16MaxValue;
+    }
 
-        short* data = reinterpret_cast<short*>(buffer.data());
-        const double amplitude = 0.5 * SHRT_MAX;
+    Tone m_tone;
 
-        double frequency = baseFrequency;  // Initial frequency
+    void generateTone(const Tone &tone, const QAudioFormat &format, QByteArray &buffer)
+    {
+        Q_ASSERT(format.sampleFormat() == QAudioFormat::Int16);
 
-        for (int i = 0; i < numFrames; ++i) {
-            double t = static_cast<double>(i) / sampleRate;
+        const int channelBytes = format.bytesPerSample();
+        const int sampleBytes = format.channelCount() * channelBytes;
+        int length = buffer.size();
+        const int numSamples = buffer.size() / sampleBytes;
 
-            // Smooth modulation of frequency based on vario using tanh function
-            double modulationFactor = std::tanh(vario);  // Adjust the tanh scaling factor as needed
-            frequency = baseFrequency + modulationFactor * vario;
+        Q_ASSERT(length % sampleBytes == 0);
+        Q_UNUSED(sampleBytes); // suppress warning in release builds
 
-            for (int channel = 0; channel < numChannels; ++channel) {
-                double value = amplitude * std::sin(2.0 * M_PI * frequency * t);
-                data[i * numChannels + channel] = static_cast<short>(value);
+        unsigned char *ptr = reinterpret_cast<unsigned char *>(buffer.data());
+
+        qreal phase = 0.0;
+
+        const qreal d = 2 * M_PI / format.sampleRate();
+
+        // We can't generate a zero-frequency sine wave
+        const qreal startFreq = tone.frequency + tone.vario;
+
+        // Amount by which phase increases on each sample
+        qreal phaseStep = d * startFreq;
+
+        // Amount by which phaseStep increases on each sample
+        // If this is non-zero, the output is a frequency-swept tone
+        const qreal phaseStepStep = d * (tone.frequency + tone.vario) / numSamples;
+
+        while (length) {
+            const qreal x = tone.amplitude * qSin(phase);
+            const qint16 value = realToPcm(x);
+            for (int i = 0; i < format.channelCount(); ++i) {
+                qToLittleEndian<qint16>(value, ptr);
+                ptr += channelBytes;
+                length -= channelBytes;
             }
-        }
 
-        return buffer;
+            phase += phaseStep;
+            while (phase > 2 * M_PI)
+                phase -= 2 * M_PI;
+            phaseStep += phaseStepStep;
+        }
     }
 
     void updateVario(qreal vario);
     void setFrequency(qreal value);
-
     void setStop(bool newStop);
 
 private slots:
@@ -64,24 +102,19 @@ private slots:
     void playSound();
 
 private:
-    QAudioFormat audio_format;
     QAudioSink *m_audioOutput;
+    QAudioFormat m_format;
     QBuffer m_audioOutputIODevice;
-    Generator *m_generator;
-    Generator* tmp;
-    PiecewiseLinearFunction *m_toneFunction;
-    PiecewiseLinearFunction *m_varioFunction;
-    qreal m_tone;
-    qreal m_toneSampleRateHz;
-    qreal m_durationUSeconds;
+    qint64 m_bufferLength;
+    QByteArray m_buffer;
     qreal frequency = 440.0;
     int phase = 0;
     qreal currentVario = 0.0;
     int sampleRate = 44100;
     bool m_stop;
 
-protected:
-    void run() override;
+//protected:
+//    void run() override;
 };
 
 #endif // VARIOSOUND_H

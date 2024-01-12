@@ -59,7 +59,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
 
     varioSound = new VarioSound(this);
-    varioSound->start();
 }
 
 MainWindow::~MainWindow()
@@ -72,9 +71,7 @@ MainWindow::~MainWindow()
     }
 
     if (varioSound)
-    {
-        varioSound->quit();
-        varioSound->wait();
+    {       
         delete varioSound;
     }
 
@@ -171,8 +168,23 @@ void MainWindow::on_scrollBarMeasurement_valueChanged(int value)
     if(value == 0)
         return;
 
-     measurementVariance = static_cast<qreal>(value) / 100.0;
-     ui->labelMV->setText(QString::number(static_cast<double>(measurementVariance), 'f', 2));
+    qreal mappedValue;
+
+    if (value <= 50) {
+        // Map values between 0 and 50 to -50 to 0
+        mappedValue = -50 + static_cast<qreal>(value);
+    } else {
+        // Map values between 50 and 100 to the range 0-50
+        mappedValue = static_cast<qreal>(value - 50);
+    }
+
+    // Normalize the mapped value to the range [0, 1]
+    qreal normalizedValue = mappedValue / 50.0;
+    if(varioSound)
+        varioSound->updateVario(normalizedValue);
+
+//     measurementVariance = static_cast<qreal>(value) / 100.0;
+//     ui->labelMV->setText(QString::number(static_cast<double>(measurementVariance), 'f', 2));
 }
 
 void MainWindow::on_scrollBarAccel_valueChanged(int value)
@@ -190,8 +202,6 @@ void MainWindow::on_scrollBarAccel_valueChanged(int value)
 
 void MainWindow::on_pushReset_clicked()
 {
-     varioSound->updateVario(350.0);
-
      stopReading = true;
      accelVariance = static_cast<qreal>(KF_VAR_ACCEL);
      measurementVariance = static_cast<qreal>(KF_VAR_MEASUREMENT);
