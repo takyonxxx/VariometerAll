@@ -10,7 +10,10 @@
 #include <QThread>
 #include <QtMath>
 #include <QDebug>
+#include <Generator.h>
+#include <PiecewiseLinearFunction.h>
 
+#define DURATION_MS 1000
 
 class VarioSound : public QThread
 {
@@ -52,6 +55,7 @@ public:
     }
 
     void updateVario(qreal vario);
+    void setFrequency(qreal value);
 
     void setStop(bool newStop);
 
@@ -59,9 +63,17 @@ private slots:
     void handleStateChanged(QAudio::State);
     void playSound();
 
-private:   
+private:
+    QAudioFormat audio_format;
     QAudioSink *m_audioOutput;
     QBuffer m_audioOutputIODevice;
+    Generator *m_generator;
+    Generator* tmp;
+    PiecewiseLinearFunction *m_toneFunction;
+    PiecewiseLinearFunction *m_varioFunction;
+    qreal m_tone;
+    qreal m_toneSampleRateHz;
+    qreal m_durationUSeconds;
     qreal frequency = 440.0;
     int phase = 0;
     qreal currentVario = 0.0;

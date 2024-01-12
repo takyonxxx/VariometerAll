@@ -54,8 +54,10 @@ MainWindow::MainWindow(QWidget *parent)
     sensorManager = new SensorManager(this);
     connect(sensorManager, &SensorManager::sendInfo, this, &MainWindow::getSensorInfo);
     sensorManager->start();
+
     readGps = new ReadGps(this);
     connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
+
     varioSound = new VarioSound(this);
     varioSound->start();
 }
