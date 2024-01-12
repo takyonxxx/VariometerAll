@@ -68,8 +68,6 @@ void VarioSound::playSound()
     if (!m_audioOutput)
         return;
 
-    qDebug() <<  m_tone.vario;
-
     //generateSineWave(1, sampleRate, 2, 440.0, currentVario, m_buffer);
     generateTone(m_tone, m_format, m_buffer);
     m_audioOutputIODevice.close();

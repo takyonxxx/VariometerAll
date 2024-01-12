@@ -77,13 +77,14 @@ void SensorManager::setStop(bool newStop)
 
 void SensorManager::run()
 {
-    // while (!m_stop)
-    // {
-    //     if(m_stop)
-    //         break;
-    //     emit sendInfo(readPressure());
-    //     msleep(500);
-    // }
+     while (!m_stop)
+     {
+         if(m_stop)
+             break;
+
+         emit sendInfo(readPressure());
+         msleep(500);
+     }
 }
 
 QList<qreal> SensorManager::readPressure()
