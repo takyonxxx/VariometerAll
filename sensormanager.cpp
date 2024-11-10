@@ -43,6 +43,7 @@ void SensorManager::startSensors()
     if (hasPressureSensor) {
         sensorPressure = new QSensor("QPressureSensor", this);
         sensorPressure->start();
+        qDebug() << "QPressureSensor started.";
     } else {
         qDebug() << "QPressureSensor not found in mySensorList.";
     }

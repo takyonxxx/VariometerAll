@@ -3,6 +3,11 @@
 
 // Qt Framework includes
 #include <QMainWindow>
+#include <QGridLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QScrollBar>
+#include <QTextBrowser>
 #include <QDateTime>
 #include <QString>
 #include <QList>
@@ -50,10 +55,10 @@ public:
 
 private slots:
 
-    void on_pushExit_clicked();
-    void on_scrollBarMeasurement_valueChanged(int value);
-    void on_scrollBarAccel_valueChanged(int value);
-    void on_pushReset_clicked();
+    void pushExit_clicked();
+    void scrollBarMeasurement_valueChanged(int value);
+    void scrollBarAccel_valueChanged(int value);
+    void pushReset_clicked();
 
 private:
     void initializeUI();
@@ -71,6 +76,29 @@ private:
 #ifdef Q_OS_ANDROID
     void requestAndroidPermissions();
 #endif
+
+    void setupUi();
+
+    QWidget *centralwidget;
+    QGridLayout *gridLayout_2;
+    QGridLayout *gridLayout;
+    QLabel *labelMV;
+    QScrollBar *scrollBarAccel;
+    QScrollBar *scrollBarMeasurement;
+    QLabel *labelAV;
+    QLabel *labelM;
+    QLabel *labelA;
+    QLabel *labelSensor;
+    QLabel *label_pressure;
+    QLabel *label_baro_altitude;
+    QLabel *labelGps;
+    QLabel *label_gps_altitude;
+    QLabel *label_speed;
+    QTextBrowser *m_textStatus;
+    QLabel *label_vario;
+    QLabel *label_vario_unit;
+    QPushButton *pushReset;
+    QPushButton *pushExit;
 
     // Device managers
     SensorManager* sensorManager{nullptr};    // Pressure and temperature sensor manager

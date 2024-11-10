@@ -10,11 +10,11 @@ const QString DISPLAY_NEGATIVE = "#FF1414";  // Aviation red (daha parlak kırm�
 const QString DISPLAY_NEUTRAL = "#14FFFF";   // EFIS cyan (daha parlak cyan)
 const QString BACKGROUND_DARK = "#0A0A0A";   // EFIS black (daha koyu siyah)
 const QString TEXT_LIGHT = "#EFFFFF";        // EFIS white (hafif cyan'lı beyaz)
-const QString BUTTON_BLUE = "#0066FF";       // Aviation blue (daha parlak mavi)
+const QString BUTTBLUE = "#0066FF";       // Aviation blue (daha parlak mavi)
 const QString WARNING_RED = "#FF4400";       // Amber warning (turuncu-kırmızı)
 
 // İkincil renkler (gerekirse kullanmak için)
-const QString CAUTION_AMBER = "#FFBF00";     // Amber (dikkat rengi)
+const QString CAUTIAMBER = "#FFBF00";     // Amber (dikkat rengi)
 const QString STATUS_GREEN = "#00FF44";      // Status OK yeşili
 const QString ADVISORY_BLUE = "#00FFFF";     // Advisory mavi
 const QString TERRAIN_BROWN = "#CD661D";     // Terrain uyarı rengi
@@ -47,7 +47,7 @@ void MainWindow::requestAndroidPermissions()
                                                 "(Ljava/lang/String;)I",
                                                 jniPermission.object());
 
-        if (result != 0) { // PackageManager.PERMISSION_GRANTED = 0
+        if (result != 0) { // PackageManager.PERMISSIGRANTED = 0
             QJniObject::callStaticMethod<void>("androidx/core/app/ActivityCompat",
                                                "requestPermissions",
                                                "(Landroid/app/Activity;[Ljava/lang/String;I)V",
@@ -76,6 +76,7 @@ MainWindow::MainWindow(QWidget *parent)
 #ifdef Q_OS_IOS
         requestIOSLocationPermission();
 #endif
+
         initializeFilters();
         initializeSensors();
 
@@ -86,46 +87,161 @@ MainWindow::MainWindow(QWidget *parent)
         throw;
     }
 }
-void MainWindow::startVarioSimulation()
-{
-
-    // Yükseliş simülasyonu (0 -> 5 m/s)
-    for (double vario = 0.0; vario <= 5.0; vario += 0.1) {
-        varioSound->updateVario(vario);
-        QThread::msleep(100);  // Her adımda 100ms bekle
-        QApplication::processEvents();  // UI'ın donmaması için event loop'u işlet
-    }
-
-    // Alçalış simülasyonu (5 -> -5 m/s)
-    for (double vario = 5.0; vario >= -5.0; vario -= 0.1) {
-        varioSound->updateVario(vario);
-        QThread::msleep(100);
-        QApplication::processEvents();
-    }
-
-    // Tekrar yükseliş (isteğe bağlı)
-    for (double vario = -5.0; vario <= 0.0; vario += 0.1) {
-        varioSound->updateVario(vario);
-        QThread::msleep(100);
-        QApplication::processEvents();
-    }
-}
 
 void MainWindow::initializeUI()
 {
     ui->setupUi(this);
-    setWindowTitle("Professional Avionic Variometer v1.0");
+
+    setupUi();
+
+    connect(scrollBarMeasurement, &QScrollBar::valueChanged,
+            this, &MainWindow::scrollBarMeasurement_valueChanged);
+    connect(scrollBarAccel, &QScrollBar::valueChanged,
+            this, &MainWindow::scrollBarAccel_valueChanged);
+    connect(pushReset, &QPushButton::clicked,
+            this, &MainWindow::pushReset_clicked);
+    connect(pushExit, &QPushButton::clicked,
+            this, &MainWindow::pushExit_clicked);
+
 
     // Configure avionic-style display elements
     configureDisplayStyles();
     configureScrollBars();
 
     // Initialize status indicators
-    ui->labelGps->setText("GPS ACTIVE");
-    ui->labelSensor->setText("SENSORS READY");
+    labelGps->setText("GPS ACTIVE");
+    labelSensor->setText("SENSORS READY");
 
     // Set initial values for variance displays
     updateVarianceDisplays();
+}
+
+void MainWindow::setupUi()
+{
+    // Set main window properties
+    if (objectName().isEmpty())
+        setObjectName("MainWindow");
+
+    resize(352, 511);
+
+    // Create central widget
+    centralwidget = new QWidget(this);
+    centralwidget->setObjectName("centralwidget");
+    setCentralWidget(centralwidget);
+
+    // Create layouts
+    gridLayout_2 = new QGridLayout(centralwidget);
+    gridLayout_2->setObjectName("gridLayout_2");
+
+    gridLayout = new QGridLayout();
+    gridLayout->setObjectName("gridLayout");
+
+    // Create all labels
+    labelMV = new QLabel(centralwidget);
+    labelMV->setObjectName("labelMV");
+    labelMV->setText("0");
+
+    labelAV = new QLabel(centralwidget);
+    labelAV->setObjectName("labelAV");
+    labelAV->setText("0");
+
+    labelM = new QLabel(centralwidget);
+    labelM->setObjectName("labelM");
+    labelM->setText("Measure : ");
+
+    labelA = new QLabel(centralwidget);
+    labelA->setObjectName("labelA");
+    labelA->setText("Accel : ");
+
+    labelSensor = new QLabel(centralwidget);
+    labelSensor->setObjectName("labelSensor");
+    labelSensor->setAlignment(Qt::AlignCenter);
+    labelSensor->setText("Barometer");
+
+    label_pressure = new QLabel(centralwidget);
+    label_pressure->setObjectName("label_pressure");
+    label_pressure->setAlignment(Qt::AlignCenter);
+    label_pressure->setText("-");
+
+    label_baro_altitude = new QLabel(centralwidget);
+    label_baro_altitude->setObjectName("label_baro_altitude");
+    label_baro_altitude->setAlignment(Qt::AlignCenter);
+    label_baro_altitude->setText("-");
+
+    labelGps = new QLabel(centralwidget);
+    labelGps->setObjectName("labelGps");
+    labelGps->setAlignment(Qt::AlignCenter);
+    labelGps->setText("Gps");
+
+    label_gps_altitude = new QLabel(centralwidget);
+    label_gps_altitude->setObjectName("label_gps_altitude");
+    label_gps_altitude->setAlignment(Qt::AlignCenter);
+    label_gps_altitude->setText("-");
+
+    label_speed = new QLabel(centralwidget);
+    label_speed->setObjectName("label_speed");
+    label_speed->setAlignment(Qt::AlignCenter);
+    label_speed->setText("-");
+
+    label_vario = new QLabel(centralwidget);
+    label_vario->setObjectName("label_vario");
+    label_vario->setAlignment(Qt::AlignCenter);
+    label_vario->setText("-");
+
+    label_vario_unit = new QLabel(centralwidget);
+    label_vario_unit->setObjectName("label_vario_unit");
+    label_vario_unit->setText(" m/s ");
+
+    scrollBarAccel = new QScrollBar(centralwidget);
+    scrollBarAccel->setObjectName("scrollBarAccel");
+    scrollBarAccel->setMinimumSize(QSize(0, 0));
+    scrollBarAccel->setMaximum(100);
+    scrollBarAccel->setOrientation(Qt::Horizontal);
+
+    scrollBarMeasurement = new QScrollBar(centralwidget);
+    scrollBarMeasurement->setObjectName("scrollBarMeasurement");
+    scrollBarMeasurement->setMinimumSize(QSize(0, 0));
+    scrollBarMeasurement->setMaximum(100);
+    scrollBarMeasurement->setOrientation(Qt::Horizontal);
+
+    // Create text browser
+    m_textStatus = new QTextBrowser(centralwidget);
+    m_textStatus->setObjectName("m_textStatus");
+    m_textStatus->setMaximumSize(QSize(16777215, 35));
+
+    // Create buttons
+    pushReset = new QPushButton(centralwidget);
+    pushReset->setObjectName("pushReset");
+    pushReset->setText("Reset");
+
+    pushExit = new QPushButton(centralwidget);
+    pushExit->setObjectName("pushExit");
+    pushExit->setText("Exit");
+
+    // Add widgets to grid layout
+    gridLayout->addWidget(labelMV, 10, 2, 1, 1);
+    gridLayout->addWidget(scrollBarAccel, 11, 1, 1, 1);
+    gridLayout->addWidget(scrollBarMeasurement, 10, 1, 1, 1);
+    gridLayout->addWidget(labelAV, 11, 2, 1, 1);
+    gridLayout->addWidget(labelM, 10, 0, 1, 1);
+    gridLayout->addWidget(labelA, 11, 0, 1, 1);
+    gridLayout->addWidget(labelSensor, 1, 0, 1, 3);
+    gridLayout->addWidget(label_pressure, 3, 0, 1, 3);
+    gridLayout->addWidget(label_baro_altitude, 4, 0, 1, 3);
+    gridLayout->addWidget(labelGps, 5, 0, 1, 3);
+    gridLayout->addWidget(label_gps_altitude, 6, 0, 1, 3);
+    gridLayout->addWidget(label_speed, 9, 0, 1, 3);
+    gridLayout->addWidget(m_textStatus, 12, 0, 1, 3);
+    gridLayout->addWidget(label_vario, 2, 0, 1, 2);
+    gridLayout->addWidget(label_vario_unit, 2, 2, 1, 1);
+    gridLayout->addWidget(pushReset, 13, 0, 1, 3);
+    gridLayout->addWidget(pushExit, 15, 0, 1, 3);
+
+    // Add grid layout to main layout
+    gridLayout_2->addLayout(gridLayout, 0, 0, 1, 1);
+
+    // Set window title
+    setWindowTitle("Variometer");
 }
 
 void MainWindow::configureDisplayStyles()
@@ -142,8 +258,8 @@ void MainWindow::configureDisplayStyles()
                                       .arg(DisplayColors::DISPLAY_NEUTRAL)
                                       .arg(commonBackground)
                                       .arg(commonPadding);
-    ui->label_vario->setStyleSheet(primaryDisplayStyle);
-    ui->label_vario_unit->setStyleSheet(primaryDisplayStyle);
+    label_vario->setStyleSheet(primaryDisplayStyle);
+    label_vario_unit->setStyleSheet(primaryDisplayStyle);
 
     // Secondary Displays - Smaller size
     QString secondaryDisplayStyle = QString("font-size: 32pt; color: %1; %2 %3 border-radius: 4px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
@@ -151,10 +267,10 @@ void MainWindow::configureDisplayStyles()
                                         .arg(commonBackground)
                                         .arg(commonPadding);
 
-    ui->label_pressure->setStyleSheet(secondaryDisplayStyle);
-    ui->label_baro_altitude->setStyleSheet(secondaryDisplayStyle);
-    ui->label_speed->setStyleSheet(secondaryDisplayStyle);
-    ui->label_gps_altitude->setStyleSheet(secondaryDisplayStyle);
+    label_pressure->setStyleSheet(secondaryDisplayStyle);
+    label_baro_altitude->setStyleSheet(secondaryDisplayStyle);
+    label_speed->setStyleSheet(secondaryDisplayStyle);
+    label_gps_altitude->setStyleSheet(secondaryDisplayStyle);
 
     // Status Indicators - Smaller size
     QString statusIndicatorStyle = QString("font-size: 24pt; color: %1; %2 %3 border-radius: 3px; "
@@ -163,18 +279,18 @@ void MainWindow::configureDisplayStyles()
                                        .arg(QString("background-color: %1;").arg(DisplayColors::WARNING_RED))
                                        .arg(commonPadding);
 
-    ui->labelGps->setStyleSheet(statusIndicatorStyle);
-    ui->labelSensor->setStyleSheet(statusIndicatorStyle);
+    labelGps->setStyleSheet(statusIndicatorStyle);
+    labelSensor->setStyleSheet(statusIndicatorStyle);
 
     // Control Buttons - Compact size
     QString buttonStyle = QString("font-size: 20pt; color: white; background-color: %1; "
                                   "border: 1px solid #666666; border-radius: 3px; %2 "
                                   "font-weight: bold; min-height: 40px;")
-                              .arg(DisplayColors::BUTTON_BLUE)
+                              .arg(DisplayColors::BUTTBLUE)
                               .arg(commonPadding);
 
-    ui->pushExit->setStyleSheet(buttonStyle);
-    ui->pushReset->setStyleSheet(buttonStyle);
+    pushExit->setStyleSheet(buttonStyle);
+    pushReset->setStyleSheet(buttonStyle);
 
     // Status Text Area - Smaller font
     QString statusTextStyle = QString("font-size: 16pt; color: %1; %2 "
@@ -183,7 +299,7 @@ void MainWindow::configureDisplayStyles()
                                   .arg(QString("background-color: %1;").arg("#002222"))
                                   .arg(commonPadding);
 
-    ui->m_textStatus->setStyleSheet(statusTextStyle);
+    m_textStatus->setStyleSheet(statusTextStyle);
 
     // Scrollbar labels için özel stil - genişletilmiş boyut
     QString scrollbarLabelStyle = QString("font-size: 18pt; color: %1; "
@@ -200,20 +316,20 @@ void MainWindow::configureDisplayStyles()
 
     // Label boyutlarını ayarla
     QFont labelFont("Digital-7", 16);  // font boyutu 18pt
-    ui->labelM->setFont(labelFont);
-    ui->labelMV->setFont(labelFont);
-    ui->labelA->setFont(labelFont);
-    ui->labelAV->setFont(labelFont);
+    labelM->setFont(labelFont);
+    labelMV->setFont(labelFont);
+    labelA->setFont(labelFont);
+    labelAV->setFont(labelFont);
 
-    ui->labelM->setMinimumWidth(120);
-    ui->labelMV->setMinimumWidth(120);
-    ui->labelA->setMinimumWidth(120);
-    ui->labelAV->setMinimumWidth(120);
+    labelM->setMinimumWidth(120);
+    labelMV->setMinimumWidth(120);
+    labelA->setMinimumWidth(120);
+    labelAV->setMinimumWidth(120);
 
-    ui->labelM->setStyleSheet(scrollbarLabelStyle);
-    ui->labelMV->setStyleSheet(scrollbarLabelStyle);
-    ui->labelA->setStyleSheet(scrollbarLabelStyle);
-    ui->labelAV->setStyleSheet(scrollbarLabelStyle);
+    labelM->setStyleSheet(scrollbarLabelStyle);
+    labelMV->setStyleSheet(scrollbarLabelStyle);
+    labelA->setStyleSheet(scrollbarLabelStyle);
+    labelAV->setStyleSheet(scrollbarLabelStyle);
 
     // Enhanced scrollbar styling - düzeltilmiş renkler
     QString scrollBarStyle = "QScrollBar:vertical {"
@@ -251,11 +367,11 @@ void MainWindow::configureDisplayStyles()
                              "}";
 
 
-    ui->scrollBarAccel->setMinimumWidth(120);        // minimum genişlik
-    ui->scrollBarMeasurement->setMinimumWidth(120);  // minimum genişlik
+    scrollBarAccel->setMinimumWidth(120);        // minimum genişlik
+    scrollBarMeasurement->setMinimumWidth(120);  // minimum genişlik
 
-    ui->scrollBarAccel->setStyleSheet(scrollBarStyle);
-    ui->scrollBarMeasurement->setStyleSheet(scrollBarStyle);
+    scrollBarAccel->setStyleSheet(scrollBarStyle);
+    scrollBarMeasurement->setStyleSheet(scrollBarStyle);
 }
 
 void MainWindow::updateVarianceDisplays()
@@ -277,17 +393,17 @@ void MainWindow::updateVarianceDisplays()
                                  "qproperty-alignment: AlignCenter;");
 
     QString mvStyle = valueStyle.arg(
-                                    measurementVariance > 0.5 ? DisplayColors::CAUTION_AMBER : DisplayColors::STATUS_GREEN
+                                    measurementVariance > 0.5 ? DisplayColors::CAUTIAMBER : DisplayColors::STATUS_GREEN
                                     ).arg(DisplayColors::BACKGROUND_DARK);
 
     QString avStyle = valueStyle.arg(
-                                    accelVariance > 0.05 ? DisplayColors::CAUTION_AMBER : DisplayColors::STATUS_GREEN
+                                    accelVariance > 0.05 ? DisplayColors::CAUTIAMBER : DisplayColors::STATUS_GREEN
                                     ).arg(DisplayColors::BACKGROUND_DARK);
 
-    ui->labelMV->setText(mvText);
-    ui->labelAV->setText(avText);
-    ui->labelMV->setStyleSheet(mvStyle);
-    ui->labelAV->setStyleSheet(avStyle);
+    labelMV->setText(mvText);
+    labelAV->setText(avText);
+    labelMV->setStyleSheet(mvStyle);
+    labelAV->setStyleSheet(avStyle);
 }
 
 void MainWindow::updateDisplays()
@@ -303,32 +419,32 @@ void MainWindow::updateDisplays()
                              .arg(varioColor)
                              .arg(DisplayColors::BACKGROUND_DARK);
 
-    ui->label_vario->setStyleSheet(varioStyle);
-    ui->label_vario->setText(varioString);
+    label_vario->setStyleSheet(varioStyle);
+    label_vario->setText(varioString);
 
     // Format numbers with consistent decimal places
-    ui->label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
-    ui->label_baro_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 0)));
+    label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
+    label_baro_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 0)));
 }
 
 void MainWindow::configureScrollBars()
 {
     // Configure variance control scrollbars
-    ui->scrollBarAccel->setRange(0, 100);
-    ui->scrollBarMeasurement->setRange(0, 100);
+    scrollBarAccel->setRange(0, 100);
+    scrollBarMeasurement->setRange(0, 100);
 
     // Set initial scrollbar positions
     int initialAccelValue = static_cast<int>(accelVariance * 1000.0);
     int initialMeasurementValue = static_cast<int>(measurementVariance * 100.0);
 
-    ui->scrollBarAccel->setValue(initialAccelValue);
-    ui->scrollBarMeasurement->setValue(initialMeasurementValue);
+    scrollBarAccel->setValue(initialAccelValue);
+    scrollBarMeasurement->setValue(initialMeasurementValue);
 
     // Style scrollbars
     QString scrollBarStyle = "QScrollBar:vertical { background: #222; width: 30px; }"
                              "QScrollBar::handle:vertical { background: #666; min-height: 30px; }";
-    ui->scrollBarAccel->setStyleSheet(scrollBarStyle);
-    ui->scrollBarMeasurement->setStyleSheet(scrollBarStyle);
+    scrollBarAccel->setStyleSheet(scrollBarStyle);
+    scrollBarMeasurement->setStyleSheet(scrollBarStyle);
 }
 
 void MainWindow::initializeFilters()
@@ -353,8 +469,8 @@ void MainWindow::initializeSensors()
     sensorManager->start();
 
     // Initialize GPS reader
-    readGps = new ReadGps(this);
-    connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
+    // readGps = new ReadGps(this);
+    // connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
 }
 
 void MainWindow::getSensorInfo(QList<qreal> info)
@@ -428,8 +544,8 @@ void MainWindow::getGpsInfo(QList<qreal> info)
     groundSpeed = static_cast<int>(info.at(3));
 
     // Update displays - Fixed ambiguous arg() calls
-    ui->label_gps_altitude->setText(QString("%1 m").arg(QString::number(altitude, 'f', 1)));
-    ui->label_speed->setText(QString("%1 km/h").arg(QString::number(groundSpeed, 'f', 1)));
+    label_gps_altitude->setText(QString("%1 m").arg(QString::number(altitude, 'f', 1)));
+    label_speed->setText(QString("%1 km/h").arg(QString::number(groundSpeed, 'f', 1)));
 
     // Update status display - Fixed ambiguous arg() calls
     QString gpsStatus = QString("GPS: Alt:%1m Lat:%2° Lon:%3° Speed:%4km/h")
@@ -440,7 +556,7 @@ void MainWindow::getGpsInfo(QList<qreal> info)
     printInfo(gpsStatus);
 }
 
-void MainWindow::on_scrollBarMeasurement_valueChanged(int value)
+void MainWindow::scrollBarMeasurement_valueChanged(int value)
 {
     if (value == 0) return;
 
@@ -460,7 +576,7 @@ void MainWindow::on_scrollBarMeasurement_valueChanged(int value)
     updateVarianceDisplays();
 }
 
-void MainWindow::on_scrollBarAccel_valueChanged(int value)
+void MainWindow::scrollBarAccel_valueChanged(int value)
 {
     if (value == 0) return;
 
@@ -475,7 +591,7 @@ void MainWindow::on_scrollBarAccel_valueChanged(int value)
     stopReading = false;
 }
 
-void MainWindow::on_pushReset_clicked()
+void MainWindow::pushReset_clicked()
 {
     stopReading = true;
 
@@ -490,16 +606,16 @@ void MainWindow::on_pushReset_clicked()
     // Reset UI elements
     int initialAccelValue = static_cast<int>(accelVariance * 1000.0);
     int initialMeasurementValue = static_cast<int>(measurementVariance * 100.0);
-    ui->scrollBarAccel->setValue(initialAccelValue);
-    ui->scrollBarMeasurement->setValue(initialMeasurementValue);
+    scrollBarAccel->setValue(initialAccelValue);
+    scrollBarMeasurement->setValue(initialMeasurementValue);
 
-    ui->m_textStatus->clear();
+    m_textStatus->clear();
     updateVarianceDisplays();
 
     stopReading = false;
 }
 
-void MainWindow::on_pushExit_clicked()
+void MainWindow::pushExit_clicked()
 {
     // Graceful shutdown
     if (varioSound) {
@@ -537,5 +653,5 @@ MainWindow::~MainWindow()
 
 void MainWindow::printInfo(QString info)
 {
-    ui->m_textStatus->setText(info);
+    m_textStatus->setText(info);
 }

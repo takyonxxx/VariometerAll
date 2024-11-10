@@ -1,11 +1,8 @@
 #include "mainwindow.h"
 #include <QApplication>
-#include <QLoggingCategory>
 
 int main(int argc, char *argv[])
 {
-    QLoggingCategory::setFilterRules(QStringLiteral("qt.positioning.debug=true"));
-
     QApplication a(argc, argv);
     MainWindow w;
     w.show();

@@ -12,7 +12,6 @@ CONFIG += c++17
 
 SOURCES += \
     KalmanFilter.cpp \
-    LocationPermission.mm \
     main.cpp \
     mainwindow.cpp \
     readgps.cpp \
@@ -21,7 +20,6 @@ SOURCES += \
 
 HEADERS += \
     KalmanFilter.h \
-    LocationPermission.h \
     mainwindow.h \
     readgps.h \
     sensormanager.h \
@@ -42,27 +40,30 @@ macos {
 ios {
     message("ios enabled")
 
-    # Basic iOS setup
     QMAKE_INFO_PLIST = ./ios/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
 
-    # Required frameworks
-    LIBS += -framework CoreMotion
+    # Required frameworks for iOS
     LIBS += -framework CoreLocation
+    LIBS += -framework CoreMotion
+
+    # Make sure the positioning plugin is loaded
+    QTPLUGIN.position = qtposition_cl
+    QT += positioning-private
 
     # Device configuration
     QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2  # 1=iPhone, 2=iPad
     QMAKE_APPLE_DEVICE_ARCHS = arm64
 
-    # Background modes (only need to set once)
+    # Background modes
     QMAKE_MAC_XCODE_SETTINGS += background_modes
     background_modes.name = UIBackgroundModes
     background_modes.value = location
 
     # Objective-C sources
     OBJECTIVE_SOURCES += LocationPermission.mm
-    HEADERS += LocationPermission.h  # Don't forget to add the header
+    HEADERS += LocationPermission.h
 }
 
 win32 {
