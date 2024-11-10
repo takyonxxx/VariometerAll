@@ -26,10 +26,60 @@ MainWindow::MainWindow(QWidget *parent)
         initializeUI();
         initializeFilters();
         initializeSensors();
+
+        varioSound = new VarioSound(this);
+        auto* timer = new QTimer(this);
+        double currentVario = 0.0;
+        bool ascending = true;
+
+        connect(timer, &QTimer::timeout, this, [=]() mutable {
+            varioSound->updateVario(currentVario);
+            qDebug() << QString("Vario: %1 m/s").arg(currentVario, 0, 'f', 1);
+
+            if (ascending) {
+                currentVario += 0.1;
+                if (currentVario >= 5.0) {
+                    ascending = false;
+                }
+            } else {
+                currentVario -= 0.1;
+                if (currentVario <= -5.0) {
+                    ascending = true;
+                }
+            }
+        });
+
+        // 300ms aralıklarla güncelle
+        timer->setInterval(1000);
+        timer->start();
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
         throw;
+    }
+}
+void MainWindow::startVarioSimulation()
+{
+
+    // Yükseliş simülasyonu (0 -> 5 m/s)
+    for (double vario = 0.0; vario <= 5.0; vario += 0.1) {
+        varioSound->updateVario(vario);
+        QThread::msleep(100);  // Her adımda 100ms bekle
+        QApplication::processEvents();  // UI'ın donmaması için event loop'u işlet
+    }
+
+    // Alçalış simülasyonu (5 -> -5 m/s)
+    for (double vario = 5.0; vario >= -5.0; vario -= 0.1) {
+        varioSound->updateVario(vario);
+        QThread::msleep(100);
+        QApplication::processEvents();
+    }
+
+    // Tekrar yükseliş (isteğe bağlı)
+    for (double vario = -5.0; vario <= 0.0; vario += 0.1) {
+        varioSound->updateVario(vario);
+        QThread::msleep(100);
+        QApplication::processEvents();
     }
 }
 
@@ -130,9 +180,6 @@ void MainWindow::initializeSensors()
     // Initialize GPS reader
     readGps = new ReadGps(this);
     connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
-
-    // Initialize vario sound generator
-    varioSound = new VarioSound(this);
 }
 
 void MainWindow::getSensorInfo(QList<qreal> info)

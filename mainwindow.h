@@ -40,120 +40,34 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
-/**
- * @brief MainWindow Class for Professional Avionic Variometer
- *
- * This class implements a professional-grade variometer interface for aviation use.
- * It processes pressure sensor data and GPS information to provide accurate
- * vertical speed, altitude, and position information for aircraft.
- */
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    /**
-     * @brief Constructor for MainWindow
-     * @param parent Parent widget pointer
-     * @throws std::runtime_error If initialization fails
-     */
-    explicit MainWindow(QWidget *parent = nullptr);
 
-    /**
-     * @brief Destructor
-     * Ensures proper cleanup of resources and threads
-     */
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
-    /**
-     * @brief Handles application exit
-     * Performs graceful shutdown of all subsystems
-     */
+
     void on_pushExit_clicked();
-
-    /**
-     * @brief Handles measurement variance adjustments
-     * @param value New variance value from scrollbar
-     */
     void on_scrollBarMeasurement_valueChanged(int value);
-
-    /**
-     * @brief Handles acceleration variance adjustments
-     * @param value New variance value from scrollbar
-     */
     void on_scrollBarAccel_valueChanged(int value);
-
-    /**
-     * @brief Resets all parameters to default values
-     */
     void on_pushReset_clicked();
 
 private:
-    /**
-     * @brief Initialize user interface components
-     * @throws std::runtime_error If UI initialization fails
-     */
+    void startVarioSimulation();
     void initializeUI();
-
-    /**
-     * @brief Configure display styles and colors
-     */
     void configureDisplayStyles();
-
-    /**
-     * @brief Configure scrollbar parameters and appearance
-     */
     void configureScrollBars();
-
-    /**
-     * @brief Initialize Kalman filters
-     */
     void initializeFilters();
-
-    /**
-     * @brief Initialize sensor and GPS systems
-     * @throws std::runtime_error If sensor initialization fails
-     */
     void initializeSensors();
-
-    /**
-     * @brief Process incoming sensor data
-     * @param info List of sensor readings
-     */
     void processSensorData(const QList<qreal>& info);
-
-    /**
-     * @brief Update pressure and altitude calculations
-     * @param timestamp Current timestamp
-     */
     void updatePressureAndAltitude(quint64 timestamp);
-
-    /**
-     * @brief Update all display elements
-     */
     void updateDisplays();
-
-    /**
-     * @brief Update variance display values
-     */
     void updateVarianceDisplays();
-
-    /**
-     * @brief Process sensor information
-     * @param info QList containing pressure and temperature data
-     */
     void getSensorInfo(QList<qreal> info);
-
-    /**
-     * @brief Process GPS information
-     * @param info QList containing GPS coordinates and altitude
-     */
     void getGpsInfo(QList<qreal> info);
-
-    /**
-     * @brief Display status information
-     * @param info Status message to display
-     */
     void printInfo(QString info);
 
     // Device managers

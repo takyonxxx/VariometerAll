@@ -41,6 +41,19 @@ ios {
     QMAKE_INFO_PLIST = ./ios/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
     QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"   
+
+# Add required frameworks for iOS
+    LIBS += -framework CoreMotion
+    LIBS += -framework CoreLocation
+
+    # Add required capabilities
+    QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2
+    QMAKE_APPLE_DEVICE_ARCHS = arm64
+
+    # Add background mode capabilities
+    QMAKE_MAC_XCODE_SETTINGS += background_modes
+    background_modes.name = UIBackgroundModes
+    background_modes.value = location
 }
 
 win32 {
