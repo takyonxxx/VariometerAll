@@ -15,43 +15,57 @@ const QString BUTTON_BLUE = "#041077";       // Navy blue for buttons
 const QString WARNING_RED = "#A73906";       // Warning indicator
 }
 
+#ifdef Q_OS_ANDROID
+#include <QCoreApplication>
+#include <QJniObject>
+#include <QJniEnvironment>
+#include <QtCore/qnativeinterface.h>
+
+void MainWindow::requestPermissions()
+{
+    const QStringList permissions{
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.BODY_SENSORS"
+    };
+
+    QJniEnvironment env;
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+
+    for(const QString &permission : permissions) {
+        QJniObject jniPermission = QJniObject::fromString(permission);
+        auto result = activity.callMethod<jint>("checkSelfPermission",
+                                                "(Ljava/lang/String;)I",
+                                                jniPermission.object());
+
+        if (result != 0) { // PackageManager.PERMISSION_GRANTED = 0
+            QJniObject::callStaticMethod<void>("androidx/core/app/ActivityCompat",
+                                               "requestPermissions",
+                                               "(Landroid/app/Activity;[Ljava/lang/String;I)V",
+                                               activity.object(),
+                                               env->NewObjectArray(1, env->FindClass("java/lang/String"), jniPermission.object()),
+                                               1);
+        }
+    }
+}
+#endif
+
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    : QMainWindow(parent)    
     , pressure(SEA_LEVEL_PRESSURE)
     , altitude(0.0)
     , stopReading(false)
+    , ui(new Ui::MainWindow)
 {
     try {
         initializeUI();
+#ifdef Q_OS_ANDROID
+        requestPermissions();
+#endif
         initializeFilters();
         initializeSensors();
 
-        varioSound = new VarioSound(this);
-        // auto* timer = new QTimer(this);
-        // double currentVario = 0.0;
-        // bool ascending = true;
-
-        // connect(timer, &QTimer::timeout, this, [=]() mutable {
-        //     varioSound->updateVario(currentVario);
-        //     qDebug() << QString("Vario: %1 m/s").arg(currentVario, 0, 'f', 1);
-
-        //     if (ascending) {
-        //         currentVario += 0.25;
-        //         if (currentVario >= 5.0) {
-        //             ascending = false;
-        //         }
-        //     } else {
-        //         currentVario -= 0.25;
-        //         if (currentVario <= -5.0) {
-        //             ascending = true;
-        //         }
-        //     }
-        // });
-
-        // // 300ms aralıklarla güncelle
-        // timer->setInterval(1000);
-        // timer->start();
+        varioSound = new VarioSound(this);      
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -102,38 +116,103 @@ void MainWindow::initializeUI()
 
 void MainWindow::configureDisplayStyles()
 {
-    // Main display elements - Aviation style
-    ui->label_vario->setStyleSheet(QString("font-size: 62pt; color: %1; background-color: %2; font-weight: bold; border: 2px solid #333;")
-                                       .arg(DisplayColors::DISPLAY_NEUTRAL).arg(DisplayColors::BACKGROUND_DARK));
-    ui->label_vario_unit->setStyleSheet(QString("font-size: 62pt; color: %1; background-color: %2; font-weight: bold;")
-                                            .arg(DisplayColors::DISPLAY_NEUTRAL).arg(DisplayColors::BACKGROUND_DARK));
+    // Common background and border styles
+    QString commonBackground = QString("background-color: %1; border: 1px solid #333333;")
+                                   .arg(DisplayColors::BACKGROUND_DARK);
 
-    // Secondary displays
-    ui->label_pressure->setStyleSheet(QString("font-size: 42pt; color: %1; background-color: %2; font-weight: bold;")
-                                          .arg(DisplayColors::TEXT_LIGHT).arg(DisplayColors::BACKGROUND_DARK));
-    ui->label_baro_altitude->setStyleSheet(QString("font-size: 42pt; color: %1; background-color: %2; font-weight: bold;")
-                                               .arg(DisplayColors::TEXT_LIGHT).arg(DisplayColors::BACKGROUND_DARK));
+    // Common padding and margin - reduced
+    QString commonPadding = "padding: 5px; margin: 2px;";
 
-    // GPS Information displays
-    ui->label_speed->setStyleSheet(QString("font-size: 42pt; color: %1; background-color: %2; font-weight: bold;")
-                                       .arg(DisplayColors::DISPLAY_NEUTRAL).arg(DisplayColors::BACKGROUND_DARK));
-    ui->label_gps_altitude->setStyleSheet(QString("font-size: 42pt; color: %1; background-color: %2; font-weight: bold;")
-                                              .arg(DisplayColors::DISPLAY_NEUTRAL).arg(DisplayColors::BACKGROUND_DARK));
+    // Primary Display (Vario) - Reduced size
+    QString primaryDisplayStyle = QString("font-size: 48pt; color: %1; %2 %3 border-radius: 5px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
+                                      .arg(DisplayColors::DISPLAY_NEUTRAL)
+                                      .arg(commonBackground)
+                                      .arg(commonPadding);
+    ui->label_vario->setStyleSheet(primaryDisplayStyle);
+    ui->label_vario_unit->setStyleSheet(primaryDisplayStyle);
 
-    // Status indicators
-    ui->labelGps->setStyleSheet(QString("font-size: 32pt; color: %1; background-color: %2; font-weight: bold;")
-                                    .arg(DisplayColors::TEXT_LIGHT).arg(DisplayColors::WARNING_RED));
-    ui->labelSensor->setStyleSheet(QString("font-size: 32pt; color: %1; background-color: %2; font-weight: bold;")
-                                       .arg(DisplayColors::TEXT_LIGHT).arg(DisplayColors::WARNING_RED));
+    // Secondary Displays - Smaller size
+    QString secondaryDisplayStyle = QString("font-size: 32pt; color: %1; %2 %3 border-radius: 4px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
+                                        .arg(DisplayColors::TEXT_LIGHT)
+                                        .arg(commonBackground)
+                                        .arg(commonPadding);
 
-    // Control elements
-    ui->pushExit->setStyleSheet(QString("font-size: 24pt; font: bold; color: white; background-color: %1; border: 2px solid #666;")
-                                    .arg(DisplayColors::BUTTON_BLUE));
-    ui->pushReset->setStyleSheet(QString("font-size: 24pt; font: bold; color: white; background-color: %1; border: 2px solid #666;")
-                                     .arg(DisplayColors::BUTTON_BLUE));
+    ui->label_pressure->setStyleSheet(secondaryDisplayStyle);
+    ui->label_baro_altitude->setStyleSheet(secondaryDisplayStyle);
+    ui->label_speed->setStyleSheet(secondaryDisplayStyle);
+    ui->label_gps_altitude->setStyleSheet(secondaryDisplayStyle);
 
-    // Status text area
-    ui->m_textStatus->setStyleSheet("font-size: 18pt; color: #cccccc; background-color: #003333; border: 1px solid #666;");
+    // Status Indicators - Smaller size
+    QString statusIndicatorStyle = QString("font-size: 24pt; color: %1; %2 %3 border-radius: 3px; "
+                                           "font-weight: bold; text-transform: uppercase;")
+                                       .arg(DisplayColors::TEXT_LIGHT)
+                                       .arg(QString("background-color: %1;").arg(DisplayColors::WARNING_RED))
+                                       .arg(commonPadding);
+
+    ui->labelGps->setStyleSheet(statusIndicatorStyle);
+    ui->labelSensor->setStyleSheet(statusIndicatorStyle);
+
+    // Control Buttons - Compact size
+    QString buttonStyle = QString("font-size: 20pt; color: white; background-color: %1; "
+                                  "border: 1px solid #666666; border-radius: 3px; %2 "
+                                  "font-weight: bold; min-height: 40px;")
+                              .arg(DisplayColors::BUTTON_BLUE)
+                              .arg(commonPadding);
+
+    ui->pushExit->setStyleSheet(buttonStyle);
+    ui->pushReset->setStyleSheet(buttonStyle);
+
+    // Status Text Area - Smaller font
+    QString statusTextStyle = QString("font-size: 16pt; color: %1; %2 "
+                                      "border-radius: 3px; font-family: monospace; %3")
+                                  .arg(DisplayColors::TEXT_LIGHT)
+                                  .arg(QString("background-color: %1;").arg("#002222"))
+                                  .arg(commonPadding);
+
+    ui->m_textStatus->setStyleSheet(statusTextStyle);
+
+    // Scrollbar styling - Narrower
+    QString scrollBarStyle = "QScrollBar:vertical { "
+                             "    background: #222222; "
+                             "    width: 30px; "
+                             "    margin: 0px 0px 0px 0px; "
+                             "    border-radius: 2px; "
+                             "} "
+                             "QScrollBar::handle:vertical { "
+                             "    background: #666666; "
+                             "    min-height: 30px; "
+                             "    border-radius: 2px; "
+                             "} "
+                             "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { "
+                             "    background: none; "
+                             "} "
+                             "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { "
+                             "    background: none; "
+                             "}";
+
+    ui->scrollBarAccel->setStyleSheet(scrollBarStyle);
+    ui->scrollBarMeasurement->setStyleSheet(scrollBarStyle);
+}
+
+void MainWindow::updateDisplays()
+{
+    // Update vario display with color coding
+    QString varioString = QString::number(qAbs(vario), 'f', 2);
+    QString varioColor = vario < 0 ? DisplayColors::DISPLAY_NEGATIVE : DisplayColors::DISPLAY_POSITIVE;
+
+    QString varioStyle = QString("font-size: 48pt; color: %1; background-color: %2; "
+                                 "font-weight: bold; border: 1px solid #333333; "
+                                 "padding: 5px; margin: 2px; border-radius: 5px; "
+                                 "font-family: 'Digital-7', 'Segment7', monospace;")
+                             .arg(varioColor)
+                             .arg(DisplayColors::BACKGROUND_DARK);
+
+    ui->label_vario->setStyleSheet(varioStyle);
+    ui->label_vario->setText(varioString);
+
+    // Format numbers with consistent decimal places
+    ui->label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
+    ui->label_baro_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 0)));
 }
 
 void MainWindow::configureScrollBars()
@@ -263,21 +342,6 @@ void MainWindow::getGpsInfo(QList<qreal> info)
                             .arg(QString::number(longitude, 'f', 6))
                             .arg(QString::number(groundSpeed, 'f', 1));
     printInfo(gpsStatus);
-}
-
-void MainWindow::updateDisplays()
-{
-    // Update vario display with color coding
-    QString varioString = QString::number(qAbs(vario), 'f', 2);
-    QString varioColor = vario < 0 ? DisplayColors::DISPLAY_NEGATIVE : DisplayColors::DISPLAY_POSITIVE;
-    ui->label_vario->setStyleSheet(QString("font-size: 62pt; color: %1; background-color: %2; font-weight: bold;")
-                                       .arg(varioColor)
-                                       .arg(DisplayColors::BACKGROUND_DARK));
-    ui->label_vario->setText(varioString);
-
-    // Update pressure and altitude displays - Fixed ambiguous arg() calls
-    ui->label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
-    ui->label_baro_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 1)));
 }
 
 void MainWindow::on_scrollBarMeasurement_valueChanged(int value)

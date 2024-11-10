@@ -69,6 +69,9 @@ private:
     void getSensorInfo(QList<qreal> info);
     void getGpsInfo(QList<qreal> info);
     void printInfo(QString info);
+#ifdef Q_OS_ANDROID
+    void requestPermissions();
+#endif
 
     // Device managers
     SensorManager* sensorManager{nullptr};    // Pressure and temperature sensor manager

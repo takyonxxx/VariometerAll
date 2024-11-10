@@ -27,7 +27,6 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-
 macos {
     message("macx enabled")
 
@@ -65,3 +64,11 @@ win32 {
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+contains(ANDROID_TARGET_ARCH,armeabi-v7a) {
+    ANDROID_PACKAGE_SOURCE_DIR = \
+        $$PWD/android
+}
+
+RESOURCES += \
+    resources.qrc
