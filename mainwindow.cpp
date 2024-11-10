@@ -20,13 +20,17 @@ const QString ADVISORY_BLUE = "#00FFFF";     // Advisory mavi
 const QString TERRAIN_BROWN = "#CD661D";     // Terrain uyarı rengi
 }
 
+#ifdef Q_OS_IOS
+#include "LocationPermission.h"
+#endif
+
 #ifdef Q_OS_ANDROID
 #include <QCoreApplication>
 #include <QJniObject>
 #include <QJniEnvironment>
 #include <QtCore/qnativeinterface.h>
 
-void MainWindow::requestPermissions()
+void MainWindow::requestAndroidPermissions()
 {
     const QStringList permissions{
         "android.permission.ACCESS_FINE_LOCATION",
@@ -55,6 +59,7 @@ void MainWindow::requestPermissions()
 }
 #endif
 
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)    
     , pressure(SEA_LEVEL_PRESSURE)
@@ -65,7 +70,11 @@ MainWindow::MainWindow(QWidget *parent)
     try {
         initializeUI();
 #ifdef Q_OS_ANDROID
-        requestPermissions();
+        requestAndroidPermissions();
+#endif
+
+#ifdef Q_OS_IOS
+        requestIOSLocationPermission();
 #endif
         initializeFilters();
         initializeSensors();

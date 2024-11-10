@@ -12,6 +12,7 @@ CONFIG += c++17
 
 SOURCES += \
     KalmanFilter.cpp \
+    LocationPermission.mm \
     main.cpp \
     mainwindow.cpp \
     readgps.cpp \
@@ -20,6 +21,7 @@ SOURCES += \
 
 HEADERS += \
     KalmanFilter.h \
+    LocationPermission.h \
     mainwindow.h \
     readgps.h \
     sensormanager.h \
@@ -39,30 +41,28 @@ macos {
 
 ios {
     message("ios enabled")
+
+    # Basic iOS setup
     QMAKE_INFO_PLIST = ./ios/Info.plist
     QMAKE_ASSET_CATALOGS = $$PWD/ios/Assets.xcassets
-    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"   
+    QMAKE_ASSET_CATALOGS_APP_ICON = "AppIcon"
 
-# Add required frameworks for iOS
+    # Required frameworks
     LIBS += -framework CoreMotion
     LIBS += -framework CoreLocation
 
-    # Add required capabilities
-    QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2
+    # Device configuration
+    QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2  # 1=iPhone, 2=iPad
     QMAKE_APPLE_DEVICE_ARCHS = arm64
 
-    # Add background mode capabilities
+    # Background modes (only need to set once)
     QMAKE_MAC_XCODE_SETTINGS += background_modes
     background_modes.name = UIBackgroundModes
     background_modes.value = location
 
-    QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2 # Support both iPhone and iPad
-
-    # Enable background location updates
-    QMAKE_MAC_XCODE_SETTINGS += background_location
-    background_location.name = UIBackgroundModes
-    background_location.value = location
-
+    # Objective-C sources
+    OBJECTIVE_SOURCES += LocationPermission.mm
+    HEADERS += LocationPermission.h  # Don't forget to add the header
 }
 
 win32 {

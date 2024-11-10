@@ -56,7 +56,6 @@ private slots:
     void on_pushReset_clicked();
 
 private:
-    void startVarioSimulation();
     void initializeUI();
     void configureDisplayStyles();
     void configureScrollBars();
@@ -70,7 +69,7 @@ private:
     void getGpsInfo(QList<qreal> info);
     void printInfo(QString info);
 #ifdef Q_OS_ANDROID
-    void requestPermissions();
+    void requestAndroidPermissions();
 #endif
 
     // Device managers
