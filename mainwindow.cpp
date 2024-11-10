@@ -28,30 +28,30 @@ MainWindow::MainWindow(QWidget *parent)
         initializeSensors();
 
         varioSound = new VarioSound(this);
-        auto* timer = new QTimer(this);
-        double currentVario = 0.0;
-        bool ascending = true;
+        // auto* timer = new QTimer(this);
+        // double currentVario = 0.0;
+        // bool ascending = true;
 
-        connect(timer, &QTimer::timeout, this, [=]() mutable {
-            varioSound->updateVario(currentVario);
-            qDebug() << QString("Vario: %1 m/s").arg(currentVario, 0, 'f', 1);
+        // connect(timer, &QTimer::timeout, this, [=]() mutable {
+        //     varioSound->updateVario(currentVario);
+        //     qDebug() << QString("Vario: %1 m/s").arg(currentVario, 0, 'f', 1);
 
-            if (ascending) {
-                currentVario += 0.1;
-                if (currentVario >= 5.0) {
-                    ascending = false;
-                }
-            } else {
-                currentVario -= 0.1;
-                if (currentVario <= -5.0) {
-                    ascending = true;
-                }
-            }
-        });
+        //     if (ascending) {
+        //         currentVario += 0.25;
+        //         if (currentVario >= 5.0) {
+        //             ascending = false;
+        //         }
+        //     } else {
+        //         currentVario -= 0.25;
+        //         if (currentVario <= -5.0) {
+        //             ascending = true;
+        //         }
+        //     }
+        // });
 
-        // 300ms aralıklarla güncelle
-        timer->setInterval(1000);
-        timer->start();
+        // // 300ms aralıklarla güncelle
+        // timer->setInterval(1000);
+        // timer->start();
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();

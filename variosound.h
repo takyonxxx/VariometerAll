@@ -14,8 +14,9 @@
 #include <cmath>
 #include <QByteArray>
 #include <QTimer>
+#include <algorithm>
 
-const qint64 BufferDurationUs = 0.1 * 1000000; // Daha kısa buffer süresi
+const qint64 BufferDurationUs = 0.1 * 1000000;
 const qint16 PCMS16MaxValue = 32767;
 const quint16 PCMS16MaxAmplitude = 32768;
 
@@ -23,7 +24,7 @@ class VarioSound : public QObject
 {
     Q_OBJECT
 public:
-    VarioSound(QObject *parent = nullptr);
+    explicit VarioSound(QObject *parent = nullptr);
     ~VarioSound();
 
     struct Tone {
@@ -33,8 +34,8 @@ public:
         qreal baseFrequency;
         qreal amplitude;
         qreal vario;
-        int pulseLength;    // ms cinsinden bip uzunluğu
-        int silenceLength;  // ms cinsinden bipler arası sessizlik
+        int pulseLength;
+        int silenceLength;
     };
 
     void updateVario(qreal vario);
@@ -57,29 +58,26 @@ private:
     void generateTone(const Tone &tone, const QAudioFormat &format, QByteArray &buffer, bool isPulseOn);
     void calculateToneParameters();
 
-    QAudioSink *m_audioOutput;
+    QAudioSink *m_audioOutput{nullptr};
     QAudioFormat m_format;
     QBuffer m_audioOutputIODevice;
-    qint64 m_bufferLength;
+    qint64 m_bufferLength{0};
     QByteArray m_buffer;
-
     Tone m_tone;
-    QTimer *m_pulseTimer;
-    bool m_isPulseOn;
+    QTimer *m_pulseTimer{nullptr};
+    bool m_isPulseOn{false};
+    bool m_isPlaying{false};
+    qreal m_currentVario{0.0};
+    const qreal m_baseFrequency{440.0};
+    const qreal m_deadband{0.2};
+    const int m_sampleRate{44100};
+    bool m_stop{false};
 
-    // Vario parametreleri
-    qreal m_currentVario;
-    const qreal m_baseFrequency = 500.0;  // Temel frekans
-    const qreal m_deadband = 0.2;         // m/s, ölü bant
-    const int m_sampleRate = 44100;
-    bool m_stop;
-
-    // Ses karakteristikleri
     struct SoundCharacteristics {
-        qreal frequency;
-        int pulseLength;
-        int silenceLength;
-        qreal amplitude;
+        qreal frequency{0.0};
+        int pulseLength{0};
+        int silenceLength{0};
+        qreal amplitude{0.0};
     };
 
     SoundCharacteristics calculateSoundCharacteristics(qreal vario);
