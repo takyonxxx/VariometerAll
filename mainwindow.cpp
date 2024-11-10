@@ -2,17 +2,22 @@
 #include "ui_mainwindow.h"
 #include <QtMath>
 #include <QDebug>
-#include <stdexcept>
 
 // Color constants for avionic display
 namespace DisplayColors {
-const QString DISPLAY_POSITIVE = "#00FF00";  // Green for positive values
-const QString DISPLAY_NEGATIVE = "#FF0000";  // Red for negative values
-const QString DISPLAY_NEUTRAL = "#0FCCCF";   // Cyan for neutral values
-const QString BACKGROUND_DARK = "#001a1a";   // Dark background
-const QString TEXT_LIGHT = "#cccccc";        // Light text
-const QString BUTTON_BLUE = "#041077";       // Navy blue for buttons
-const QString WARNING_RED = "#A73906";       // Warning indicator
+const QString DISPLAY_POSITIVE = "#00FF3B";  // Aviation green (daha parlak yeşil)
+const QString DISPLAY_NEGATIVE = "#FF1414";  // Aviation red (daha parlak kırmızı)
+const QString DISPLAY_NEUTRAL = "#14FFFF";   // EFIS cyan (daha parlak cyan)
+const QString BACKGROUND_DARK = "#0A0A0A";   // EFIS black (daha koyu siyah)
+const QString TEXT_LIGHT = "#EFFFFF";        // EFIS white (hafif cyan'lı beyaz)
+const QString BUTTON_BLUE = "#0066FF";       // Aviation blue (daha parlak mavi)
+const QString WARNING_RED = "#FF4400";       // Amber warning (turuncu-kırmızı)
+
+// İkincil renkler (gerekirse kullanmak için)
+const QString CAUTION_AMBER = "#FFBF00";     // Amber (dikkat rengi)
+const QString STATUS_GREEN = "#00FF44";      // Status OK yeşili
+const QString ADVISORY_BLUE = "#00FFFF";     // Advisory mavi
+const QString TERRAIN_BROWN = "#CD661D";     // Terrain uyarı rengi
 }
 
 #ifdef Q_OS_ANDROID
@@ -171,27 +176,109 @@ void MainWindow::configureDisplayStyles()
 
     ui->m_textStatus->setStyleSheet(statusTextStyle);
 
-    // Scrollbar styling - Narrower
-    QString scrollBarStyle = "QScrollBar:vertical { "
-                             "    background: #222222; "
-                             "    width: 30px; "
-                             "    margin: 0px 0px 0px 0px; "
-                             "    border-radius: 2px; "
-                             "} "
-                             "QScrollBar::handle:vertical { "
-                             "    background: #666666; "
-                             "    min-height: 30px; "
-                             "    border-radius: 2px; "
-                             "} "
-                             "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { "
-                             "    background: none; "
-                             "} "
-                             "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { "
-                             "    background: none; "
+    // Scrollbar labels için özel stil - genişletilmiş boyut
+    QString scrollbarLabelStyle = QString("font-size: 18pt; color: %1; "
+                                          "background-color: %2; "
+                                          "border: 1px solid #444444; "
+                                          "border-radius: 3px; "
+                                          "padding: 3px 15px; "  // yatay padding arttırıldı
+                                          "margin: 2px; "
+                                          "font-family: 'Digital-7', 'Segment7', monospace; "
+                                          "font-weight: bold; "
+                                          "qproperty-alignment: AlignCenter;")
+                                      .arg(DisplayColors::ADVISORY_BLUE)
+                                      .arg(DisplayColors::BACKGROUND_DARK);
+
+    // Label boyutlarını ayarla
+    QFont labelFont("Digital-7", 16);  // font boyutu 18pt
+    ui->labelM->setFont(labelFont);
+    ui->labelMV->setFont(labelFont);
+    ui->labelA->setFont(labelFont);
+    ui->labelAV->setFont(labelFont);
+
+    ui->labelM->setMinimumWidth(120);
+    ui->labelMV->setMinimumWidth(120);
+    ui->labelA->setMinimumWidth(120);
+    ui->labelAV->setMinimumWidth(120);
+
+    ui->labelM->setStyleSheet(scrollbarLabelStyle);
+    ui->labelMV->setStyleSheet(scrollbarLabelStyle);
+    ui->labelA->setStyleSheet(scrollbarLabelStyle);
+    ui->labelAV->setStyleSheet(scrollbarLabelStyle);
+
+    // Enhanced scrollbar styling - düzeltilmiş renkler
+    QString scrollBarStyle = "QScrollBar:vertical {"
+                             "    background-color: #1A1A1A;"
+                             "    width: 50px;"  // genişlik arttırıldı
+                             "    margin: 3px;"  // margin eklendi
+                             "    border: 2px solid #444444;"  // border kalınlaştırıldı
+                             "    border-radius: 4px;"
+                             "}"
+                             "QScrollBar::handle:vertical {"
+                             "    background-color: #0066FF;"  // ana mavi renk
+                             "    min-height: 50px;"  // minimum yükseklik arttırıldı
+                             "    margin: 3px;"
+                             "    border: 2px solid #0044CC;"  // border eklendi
+                             "    border-radius: 4px;"
+                             "}"
+                             "QScrollBar::handle:vertical:hover {"
+                             "    background-color: #0077FF;"  // hover rengi
+                             "    border: 2px solid #0055DD;"
+                             "}"
+                             "QScrollBar::handle:vertical:pressed {"
+                             "    background-color: #0044CC;"  // basılı tutma rengi
+                             "}"
+                             "QScrollBar::add-line:vertical {"
+                             "    height: 0px;"
+                             "    border: none;"
+                             "}"
+                             "QScrollBar::sub-line:vertical {"
+                             "    height: 0px;"
+                             "    border: none;"
+                             "}"
+                             "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
+                             "    background: #151515;"  // boş alan rengi
+                             "    border-radius: 4px;"
                              "}";
+
+
+    ui->scrollBarAccel->setMinimumWidth(120);        // minimum genişlik
+    ui->scrollBarMeasurement->setMinimumWidth(120);  // minimum genişlik
 
     ui->scrollBarAccel->setStyleSheet(scrollBarStyle);
     ui->scrollBarMeasurement->setStyleSheet(scrollBarStyle);
+}
+
+void MainWindow::updateVarianceDisplays()
+{
+    // Değerleri formatla (sabit genişlikte gösterim için)
+    QString mvText = QString("%1").arg(QString::number(static_cast<double>(measurementVariance), 'f', 2), 6, ' ');
+    QString avText = QString("%1").arg(QString::number(static_cast<double>(accelVariance), 'f', 3), 7, ' ');
+
+    // Değerlere göre renk değişimi
+    QString valueStyle = QString("font-size: 18pt; "
+                                 "color: %1; "
+                                 "background-color: %2; "
+                                 "border: 1px solid #444444; "
+                                 "border-radius: 3px; "
+                                 "padding: 3px 15px; "
+                                 "margin: 2px; "
+                                 "font-family: 'Digital-7', 'Segment7', monospace; "
+                                 "font-weight: bold; "
+                                 "qproperty-alignment: AlignCenter;");
+
+    QString mvStyle = valueStyle.arg(
+                                    measurementVariance > 0.5 ? DisplayColors::CAUTION_AMBER : DisplayColors::STATUS_GREEN
+                                    ).arg(DisplayColors::BACKGROUND_DARK);
+
+    QString avStyle = valueStyle.arg(
+                                    accelVariance > 0.05 ? DisplayColors::CAUTION_AMBER : DisplayColors::STATUS_GREEN
+                                    ).arg(DisplayColors::BACKGROUND_DARK);
+
+    ui->labelMV->setText(mvText);
+    ui->labelAV->setText(avText);
+    ui->labelMV->setStyleSheet(mvStyle);
+    ui->labelAV->setStyleSheet(avStyle);
 }
 
 void MainWindow::updateDisplays()
@@ -377,12 +464,6 @@ void MainWindow::on_scrollBarAccel_valueChanged(int value)
 
     updateVarianceDisplays();
     stopReading = false;
-}
-
-void MainWindow::updateVarianceDisplays()
-{
-    ui->labelMV->setText(QString::number(static_cast<double>(measurementVariance), 'f', 2));
-    ui->labelAV->setText(QString::number(static_cast<double>(accelVariance), 'f', 3));
 }
 
 void MainWindow::on_pushReset_clicked()
