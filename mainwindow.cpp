@@ -116,42 +116,60 @@ void MainWindow::initializeUI()
     updateVarianceDisplays();
 }
 
+
 void MainWindow::setupUi()
 {
     // Set main window properties
     if (objectName().isEmpty())
         setObjectName("MainWindow");
 
-    resize(352, 511);
+    // Get the screen size and adjust the window size
+    QScreen *screen = QGuiApplication::primaryScreen();
+    QRect screenGeometry = screen->geometry();
+    int screenWidth = screenGeometry.width();
+
+    // Adjust window size to screen width and maintain aspect ratio
+    resize(screenWidth, screenWidth * 1.45);
 
     // Create central widget
     centralwidget = new QWidget(this);
     centralwidget->setObjectName("centralwidget");
     setCentralWidget(centralwidget);
 
-    // Create layouts
+    // Create layouts with proper margins for iOS
     gridLayout_2 = new QGridLayout(centralwidget);
     gridLayout_2->setObjectName("gridLayout_2");
+    gridLayout_2->setContentsMargins(10, 10, 10, 10);
+    gridLayout_2->setSpacing(5);
 
     gridLayout = new QGridLayout();
     gridLayout->setObjectName("gridLayout");
+    gridLayout->setSpacing(5);
+
+    // Calculate sizes based on screen width
+    int labelWidth = screenWidth * 0.25;
+    int scrollBarWidth = screenWidth * 0.45;
 
     // Create all labels
     labelMV = new QLabel(centralwidget);
     labelMV->setObjectName("labelMV");
     labelMV->setText("0");
+    labelMV->setMaximumWidth(labelWidth);
 
     labelAV = new QLabel(centralwidget);
     labelAV->setObjectName("labelAV");
     labelAV->setText("0");
+    labelAV->setMaximumWidth(labelWidth);
 
     labelM = new QLabel(centralwidget);
     labelM->setObjectName("labelM");
     labelM->setText("Measure : ");
+    labelM->setMaximumWidth(labelWidth);
 
     labelA = new QLabel(centralwidget);
     labelA->setObjectName("labelA");
     labelA->setText("Accel : ");
+    labelA->setMaximumWidth(labelWidth);
 
     labelSensor = new QLabel(centralwidget);
     labelSensor->setObjectName("labelSensor");
@@ -186,37 +204,36 @@ void MainWindow::setupUi()
     label_vario = new QLabel(centralwidget);
     label_vario->setObjectName("label_vario");
     label_vario->setAlignment(Qt::AlignCenter);
-    label_vario->setText("-");
+    label_vario->setText("- m/s");
 
-    label_vario_unit = new QLabel(centralwidget);
-    label_vario_unit->setObjectName("label_vario_unit");
-    label_vario_unit->setText(" m/s ");
-
+    // Create scroll bars
     scrollBarAccel = new QScrollBar(centralwidget);
     scrollBarAccel->setObjectName("scrollBarAccel");
-    scrollBarAccel->setMinimumSize(QSize(0, 0));
+    scrollBarAccel->setFixedWidth(scrollBarWidth);
     scrollBarAccel->setMaximum(100);
     scrollBarAccel->setOrientation(Qt::Horizontal);
 
     scrollBarMeasurement = new QScrollBar(centralwidget);
     scrollBarMeasurement->setObjectName("scrollBarMeasurement");
-    scrollBarMeasurement->setMinimumSize(QSize(0, 0));
+    scrollBarMeasurement->setFixedWidth(scrollBarWidth);
     scrollBarMeasurement->setMaximum(100);
     scrollBarMeasurement->setOrientation(Qt::Horizontal);
 
-    // Create text browser
+    // Create text browser with adjusted height
     m_textStatus = new QTextBrowser(centralwidget);
     m_textStatus->setObjectName("m_textStatus");
-    m_textStatus->setMaximumSize(QSize(16777215, 35));
+    m_textStatus->setMaximumHeight(screenWidth * 0.1); // Proportional to screen width
 
-    // Create buttons
+    // Create buttons with adjusted height
     pushReset = new QPushButton(centralwidget);
     pushReset->setObjectName("pushReset");
     pushReset->setText("Reset");
+    pushReset->setFixedHeight(screenWidth * 0.12);
 
     pushExit = new QPushButton(centralwidget);
     pushExit->setObjectName("pushExit");
     pushExit->setText("Exit");
+    pushExit->setFixedHeight(screenWidth * 0.12);
 
     // Add widgets to grid layout
     gridLayout->addWidget(labelMV, 10, 2, 1, 1);
@@ -232,37 +249,48 @@ void MainWindow::setupUi()
     gridLayout->addWidget(label_gps_altitude, 6, 0, 1, 3);
     gridLayout->addWidget(label_speed, 9, 0, 1, 3);
     gridLayout->addWidget(m_textStatus, 12, 0, 1, 3);
-    gridLayout->addWidget(label_vario, 2, 0, 1, 2);
-    gridLayout->addWidget(label_vario_unit, 2, 2, 1, 1);
+    gridLayout->addWidget(label_vario, 2, 0, 1, 3);
     gridLayout->addWidget(pushReset, 13, 0, 1, 3);
     gridLayout->addWidget(pushExit, 15, 0, 1, 3);
 
     // Add grid layout to main layout
     gridLayout_2->addLayout(gridLayout, 0, 0, 1, 1);
 
-    // Set window title
     setWindowTitle("Variometer");
 }
 
 void MainWindow::configureDisplayStyles()
 {
+    QScreen *screen = QGuiApplication::primaryScreen();
+    int screenWidth = screen->geometry().width();
+
+    // Calculate font sizes based on screen width
+    int primaryFontSize = screenWidth * 0.10;    // Primary displays
+    int secondaryFontSize = screenWidth * 0.08;  // Secondary displays
+    int statusFontSize = screenWidth * 0.06;     // Status indicators
+    int buttonFontSize = screenWidth * 0.05;     // Buttons
+    int scrollbarLabelFontSize = screenWidth * 0.04; // Scrollbar labels
+
     // Common background and border styles
     QString commonBackground = QString("background-color: %1; border: 1px solid #333333;")
                                    .arg(DisplayColors::BACKGROUND_DARK);
 
-    // Common padding and margin - reduced
-    QString commonPadding = "padding: 5px; margin: 2px;";
+    // Common padding and margin - adjusted for screen size
+    QString commonPadding = QString("padding: %1px; margin: %2px;")
+                                .arg(screenWidth * 0.01)
+                                .arg(screenWidth * 0.005);
 
-    // Primary Display (Vario) - Reduced size
-    QString primaryDisplayStyle = QString("font-size: 48pt; color: %1; %2 %3 border-radius: 5px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
+    // Primary Display (Vario)
+    QString primaryDisplayStyle = QString("font-size: %1px; color: %2; %3 %4 border-radius: 5px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
+                                      .arg(primaryFontSize)
                                       .arg(DisplayColors::DISPLAY_NEUTRAL)
                                       .arg(commonBackground)
                                       .arg(commonPadding);
     label_vario->setStyleSheet(primaryDisplayStyle);
-    label_vario_unit->setStyleSheet(primaryDisplayStyle);
 
-    // Secondary Displays - Smaller size
-    QString secondaryDisplayStyle = QString("font-size: 32pt; color: %1; %2 %3 border-radius: 4px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
+    // Secondary Displays
+    QString secondaryDisplayStyle = QString("font-size: %1px; color: %2; %3 %4 border-radius: 4px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
+                                        .arg(secondaryFontSize)
                                         .arg(DisplayColors::TEXT_LIGHT)
                                         .arg(commonBackground)
                                         .arg(commonPadding);
@@ -272,9 +300,9 @@ void MainWindow::configureDisplayStyles()
     label_speed->setStyleSheet(secondaryDisplayStyle);
     label_gps_altitude->setStyleSheet(secondaryDisplayStyle);
 
-    // Status Indicators - Smaller size
-    QString statusIndicatorStyle = QString("font-size: 24pt; color: %1; %2 %3 border-radius: 3px; "
-                                           "font-weight: bold; text-transform: uppercase;")
+    // Status Indicators
+    QString statusIndicatorStyle = QString("font-size: %1px; color: %2; %3 %4 border-radius: 3px; font-weight: bold; text-transform: uppercase;")
+                                       .arg(statusFontSize)
                                        .arg(DisplayColors::TEXT_LIGHT)
                                        .arg(QString("background-color: %1;").arg(DisplayColors::WARNING_RED))
                                        .arg(commonPadding);
@@ -282,93 +310,67 @@ void MainWindow::configureDisplayStyles()
     labelGps->setStyleSheet(statusIndicatorStyle);
     labelSensor->setStyleSheet(statusIndicatorStyle);
 
-    // Control Buttons - Compact size
-    QString buttonStyle = QString("font-size: 20pt; color: white; background-color: %1; "
-                                  "border: 1px solid #666666; border-radius: 3px; %2 "
-                                  "font-weight: bold; min-height: 40px;")
+    // Control Buttons
+    QString buttonStyle = QString("font-size: %1px; color: white; background-color: %2; border: 1px solid #666666; border-radius: 3px; %3 font-weight: bold;")
+                              .arg(buttonFontSize)
                               .arg(DisplayColors::BUTTBLUE)
                               .arg(commonPadding);
 
     pushExit->setStyleSheet(buttonStyle);
     pushReset->setStyleSheet(buttonStyle);
 
-    // Status Text Area - Smaller font
-    QString statusTextStyle = QString("font-size: 16pt; color: %1; %2 "
-                                      "border-radius: 3px; font-family: monospace; %3")
+    // Status Text Area
+    QString statusTextStyle = QString("font-size: %1px; color: %2; %3 border-radius: 3px; font-family: monospace; %4")
+                                  .arg(statusFontSize)
                                   .arg(DisplayColors::TEXT_LIGHT)
                                   .arg(QString("background-color: %1;").arg("#002222"))
                                   .arg(commonPadding);
 
     m_textStatus->setStyleSheet(statusTextStyle);
 
-    // Scrollbar labels için özel stil - genişletilmiş boyut
-    QString scrollbarLabelStyle = QString("font-size: 18pt; color: %1; "
-                                          "background-color: %2; "
-                                          "border: 1px solid #444444; "
-                                          "border-radius: 3px; "
-                                          "padding: 3px 15px; "  // yatay padding arttırıldı
-                                          "margin: 2px; "
-                                          "font-family: 'Digital-7', 'Segment7', monospace; "
-                                          "font-weight: bold; "
-                                          "qproperty-alignment: AlignCenter;")
+    // Scrollbar labels
+    QString scrollbarLabelStyle = QString("font-size: %1px; color: %2; background-color: %3; border: 1px solid #444444; border-radius: 3px; padding: 3px 15px; margin: 2px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold; qproperty-alignment: AlignCenter;")
+                                      .arg(scrollbarLabelFontSize)
                                       .arg(DisplayColors::ADVISORY_BLUE)
                                       .arg(DisplayColors::BACKGROUND_DARK);
-
-    // Label boyutlarını ayarla
-    QFont labelFont("Digital-7", 16);  // font boyutu 18pt
-    labelM->setFont(labelFont);
-    labelMV->setFont(labelFont);
-    labelA->setFont(labelFont);
-    labelAV->setFont(labelFont);
-
-    labelM->setMinimumWidth(120);
-    labelMV->setMinimumWidth(120);
-    labelA->setMinimumWidth(120);
-    labelAV->setMinimumWidth(120);
 
     labelM->setStyleSheet(scrollbarLabelStyle);
     labelMV->setStyleSheet(scrollbarLabelStyle);
     labelA->setStyleSheet(scrollbarLabelStyle);
     labelAV->setStyleSheet(scrollbarLabelStyle);
 
-    // Enhanced scrollbar styling - düzeltilmiş renkler
-    QString scrollBarStyle = "QScrollBar:vertical {"
-                             "    background-color: #1A1A1A;"
-                             "    width: 50px;"  // genişlik arttırıldı
-                             "    margin: 3px;"  // margin eklendi
-                             "    border: 2px solid #444444;"  // border kalınlaştırıldı
-                             "    border-radius: 4px;"
-                             "}"
-                             "QScrollBar::handle:vertical {"
-                             "    background-color: #0066FF;"  // ana mavi renk
-                             "    min-height: 50px;"  // minimum yükseklik arttırıldı
-                             "    margin: 3px;"
-                             "    border: 2px solid #0044CC;"  // border eklendi
-                             "    border-radius: 4px;"
-                             "}"
-                             "QScrollBar::handle:vertical:hover {"
-                             "    background-color: #0077FF;"  // hover rengi
-                             "    border: 2px solid #0055DD;"
-                             "}"
-                             "QScrollBar::handle:vertical:pressed {"
-                             "    background-color: #0044CC;"  // basılı tutma rengi
-                             "}"
-                             "QScrollBar::add-line:vertical {"
-                             "    height: 0px;"
-                             "    border: none;"
-                             "}"
-                             "QScrollBar::sub-line:vertical {"
-                             "    height: 0px;"
-                             "    border: none;"
-                             "}"
-                             "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {"
-                             "    background: #151515;"  // boş alan rengi
-                             "    border-radius: 4px;"
-                             "}";
-
-
-    scrollBarAccel->setMinimumWidth(120);        // minimum genişlik
-    scrollBarMeasurement->setMinimumWidth(120);  // minimum genişlik
+    // Scrollbar styling
+    QString scrollBarStyle = QString("QScrollBar:horizontal {"
+                                     "    background-color: #1A1A1A;"
+                                     "    height: %1px;"
+                                     "    margin: 3px;"
+                                     "    border: 2px solid #444444;"
+                                     "    border-radius: 4px;"
+                                     "}"
+                                     "QScrollBar::handle:horizontal {"
+                                     "    background-color: #0066FF;"
+                                     "    min-height: %2px;"
+                                     "    margin: 3px;"
+                                     "    border: 2px solid #0044CC;"
+                                     "    border-radius: 4px;"
+                                     "}"
+                                     "QScrollBar::handle:horizontal:hover {"
+                                     "    background-color: #0077FF;"
+                                     "    border: 2px solid #0055DD;"
+                                     "}"
+                                     "QScrollBar::handle:horizontal:pressed {"
+                                     "    background-color: #0044CC;"
+                                     "}"
+                                     "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {"
+                                     "    width: 0px;"
+                                     "    border: none;"
+                                     "}"
+                                     "QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {"
+                                     "    background: #151515;"
+                                     "    border-radius: 4px;"
+                                     "}")
+                                 .arg(screenWidth * 0.06)  // Scrollbar height
+                                 .arg(screenWidth * 0.04); // Handle minimum height
 
     scrollBarAccel->setStyleSheet(scrollBarStyle);
     scrollBarMeasurement->setStyleSheet(scrollBarStyle);
@@ -409,7 +411,7 @@ void MainWindow::updateVarianceDisplays()
 void MainWindow::updateDisplays()
 {
     // Update vario display with color coding
-    QString varioString = QString::number(qAbs(vario), 'f', 2);
+    QString varioString = QString::number(qAbs(vario), 'f', 2) + " m/s";
     QString varioColor = vario < 0 ? DisplayColors::DISPLAY_NEGATIVE : DisplayColors::DISPLAY_POSITIVE;
 
     QString varioStyle = QString("font-size: 48pt; color: %1; background-color: %2; "

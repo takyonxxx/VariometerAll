@@ -3,6 +3,7 @@
 
 // Qt Framework includes
 #include <QMainWindow>
+#include <QScreen>
 #include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -96,7 +97,6 @@ private:
     QLabel *label_speed;
     QTextBrowser *m_textStatus;
     QLabel *label_vario;
-    QLabel *label_vario_unit;
     QPushButton *pushReset;
     QPushButton *pushExit;
 
