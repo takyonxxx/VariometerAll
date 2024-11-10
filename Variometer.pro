@@ -2,6 +2,8 @@ QT       += core gui sensors positioning multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+DEFINES += QT_POSITIONING_IOS    # For iOS-specific positioning
+
 CONFIG += c++17
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -53,6 +55,14 @@ ios {
     QMAKE_MAC_XCODE_SETTINGS += background_modes
     background_modes.name = UIBackgroundModes
     background_modes.value = location
+
+    QMAKE_APPLE_TARGETED_DEVICE_FAMILY = 1,2 # Support both iPhone and iPad
+
+    # Enable background location updates
+    QMAKE_MAC_XCODE_SETTINGS += background_location
+    background_location.name = UIBackgroundModes
+    background_location.value = location
+
 }
 
 win32 {
