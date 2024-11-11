@@ -23,9 +23,7 @@ void ReadGps::checkPermissionAndInitialize()
 
     source = QGeoPositionInfoSource::createDefaultSource(this);
 
-    if (source) {
-        qDebug() << "Attempting to start GPS - Source:" << source->sourceName();
-
+    if (source) {      
         connect(source, &QGeoPositionInfoSource::positionUpdated,
                 this, &ReadGps::positionUpdated);
         connect(source, &QGeoPositionInfoSource::errorOccurred,
@@ -38,8 +36,6 @@ void ReadGps::checkPermissionAndInitialize()
         // Request a single update first to trigger the permission dialog
         source->requestUpdate(1000);
         updatesStarted = false;
-
-        qDebug() << "GPS Source initialized with update interval:" << source->updateInterval() << "ms";
     } else {
         qDebug() << "Error: Could not create position source";
     }
@@ -50,10 +46,8 @@ void ReadGps::initializeGPS()
     if (!source) return;
 
     if (!updatesStarted) {
-        // Start continuous updates
         source->startUpdates();
-        updatesStarted = true;
-        qDebug() << "GPS started continuous updates - Source:" << source->sourceName();
+        updatesStarted = true;        
     }
 }
 
@@ -101,7 +95,6 @@ QList<qreal> ReadGps::captureGpsData()
 
 void ReadGps::positionUpdated(const QGeoPositionInfo &info)
 {
-    // If we get a position update, permissions must be granted
     stopRetryTimer();
 
     positionInfo = info;
@@ -111,11 +104,6 @@ void ReadGps::positionUpdated(const QGeoPositionInfo &info)
     if (!updatesStarted) {
         initializeGPS();
     }
-
-    qDebug() << "Position updated:"
-             << "Lat:" << positionInfo.coordinate().latitude()
-             << "Lon:" << positionInfo.coordinate().longitude()
-             << "Alt:" << positionInfo.coordinate().altitude();
 }
 
 void ReadGps::handleError()

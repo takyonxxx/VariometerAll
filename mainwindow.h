@@ -7,7 +7,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QScrollBar>
+#include <QSlider>
 #include <QTextBrowser>
 #include <QDateTime>
 #include <QString>
@@ -57,8 +57,8 @@ public:
 private slots:
 
     void pushExit_clicked();
-    void scrollBarMeasurement_valueChanged(int value);
-    void scrollBarAccel_valueChanged(int value);
+    void sliderMeasurement_valueChanged(int value);
+    void sliderAccel_valueChanged(int value);
     void pushReset_clicked();
 
 private:
@@ -84,8 +84,8 @@ private:
     QGridLayout *gridLayout_2;
     QGridLayout *gridLayout;
     QLabel *labelMV;
-    QScrollBar *scrollBarAccel;
-    QScrollBar *scrollBarMeasurement;
+    QSlider *sliderAccel;
+    QSlider *sliderMeasurement;
     QLabel *labelAV;
     QLabel *labelM;
     QLabel *labelA;

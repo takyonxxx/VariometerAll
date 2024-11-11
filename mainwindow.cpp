@@ -82,36 +82,36 @@ MainWindow::MainWindow(QWidget *parent)
 
         varioSound = new VarioSound(this);
 
-        QTimer *simTimer = new QTimer(this);
-        float currentVario = 0.0f;
-        bool increasing = true;
+        // QTimer *simTimer = new QTimer(this);
+        // float currentVario = 0.0f;
+        // bool increasing = true;
 
-        // Connect timer to lambda function that updates vario values
-        connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
-            // Update vario with current value
-            varioSound->updateVario(currentVario);
+        // // Connect timer to lambda function that updates vario values
+        // connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
+        //     // Update vario with current value
+        //     varioSound->updateVario(currentVario);
 
-            // Adjust vario value
-            if (increasing) {
-                currentVario += 0.25f;
-                if (currentVario >= 5.0f) {
-                    increasing = false;
-                    currentVario = 5.0f;
-                }
-            } else {
-                currentVario -= 0.25f;
-                if (currentVario <= 0.1f) {
-                    increasing = true;
-                    currentVario = 0.0f;
-                }
-            }
+        //     // Adjust vario value
+        //     if (increasing) {
+        //         currentVario += 0.5f;
+        //         if (currentVario >= 10.0f) {
+        //             increasing = false;
+        //             currentVario = 10.0f;
+        //         }
+        //     } else {
+        //         currentVario -= 0.5f;
+        //         if (currentVario <= -5.0f) {
+        //             increasing = true;
+        //             currentVario = -5.0f;
+        //         }
+        //     }
 
-            // Format and display current vario value (optional)
-            qDebug() << "Current vario:" << QString::number(currentVario, 'f', 1) << "m/s";
-        });
+        //     // Format and display current vario value (optional)
+        //     qDebug() << "Current vario:" << QString::number(currentVario, 'f', 1) << "m/s";
+        // });
 
-        // Start the simulation timer (updates every 500ms)
-        simTimer->start(1000);
+        // // Start the simulation timer (updates every 500ms)
+        // simTimer->start(250);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -125,10 +125,10 @@ void MainWindow::initializeUI()
 
     setupUi();
 
-    connect(scrollBarMeasurement, &QScrollBar::valueChanged,
-            this, &MainWindow::scrollBarMeasurement_valueChanged);
-    connect(scrollBarAccel, &QScrollBar::valueChanged,
-            this, &MainWindow::scrollBarAccel_valueChanged);
+    connect(sliderMeasurement, &QSlider::valueChanged,
+            this, &MainWindow::sliderMeasurement_valueChanged);
+    connect(sliderAccel, &QSlider::valueChanged,
+            this, &MainWindow::sliderAccel_valueChanged);
     connect(pushReset, &QPushButton::clicked,
             this, &MainWindow::pushReset_clicked);
     connect(pushExit, &QPushButton::clicked,
@@ -160,7 +160,7 @@ void MainWindow::setupUi()
     int screenWidth = screenGeometry.width();
 
     // Adjust window size to screen width and maintain aspect ratio
-    //resize(screenWidth, screenWidth * 1.45);
+    resize(screenWidth, screenWidth * 1.45);
 
     // Create central widget
     centralwidget = new QWidget(this);
@@ -230,15 +230,15 @@ void MainWindow::setupUi()
     label_vario->setText("- m/s");
 
     // Create scroll bars
-    scrollBarAccel = new QScrollBar(centralwidget);
-    scrollBarAccel->setObjectName("scrollBarAccel");
-    scrollBarAccel->setMaximum(100);
-    scrollBarAccel->setOrientation(Qt::Horizontal);
+    sliderAccel = new QSlider(centralwidget);
+    sliderAccel->setObjectName("sliderAccel");
+    sliderAccel->setMaximum(100);
+    sliderAccel->setOrientation(Qt::Horizontal);
 
-    scrollBarMeasurement = new QScrollBar(centralwidget);
-    scrollBarMeasurement->setObjectName("scrollBarMeasurement");
-    scrollBarMeasurement->setMaximum(100);
-    scrollBarMeasurement->setOrientation(Qt::Horizontal);
+    sliderMeasurement = new QSlider(centralwidget);
+    sliderMeasurement->setObjectName("sliderMeasurement");
+    sliderMeasurement->setMaximum(100);
+    sliderMeasurement->setOrientation(Qt::Horizontal);
 
     // Create text browser with adjusted height
     m_textStatus = new QTextBrowser(centralwidget);
@@ -254,8 +254,8 @@ void MainWindow::setupUi()
 
     // Add widgets to grid layout
     gridLayout->addWidget(labelMV, 10, 2, 1, 1);
-    gridLayout->addWidget(scrollBarAccel, 11, 1, 1, 1);
-    gridLayout->addWidget(scrollBarMeasurement, 10, 1, 1, 1);
+    gridLayout->addWidget(sliderAccel, 11, 1, 1, 1);
+    gridLayout->addWidget(sliderMeasurement, 10, 1, 1, 1);
     gridLayout->addWidget(labelAV, 11, 2, 1, 1);
     gridLayout->addWidget(labelM, 10, 0, 1, 1);
     gridLayout->addWidget(labelA, 11, 0, 1, 1);
@@ -281,12 +281,10 @@ void MainWindow::configureDisplayStyles()
     QScreen *screen = QGuiApplication::primaryScreen();
     int screenWidth = screen->geometry().width();
 
-    screenWidth = screenWidth / 5.0;
-
     // Calculate font sizes based on screen width
-    int primaryFontSize = screenWidth * 0.10;    // Primary displays
+    int primaryFontSize = screenWidth * 0.12;    // Primary displays
     int secondaryFontSize = screenWidth * 0.08;  // Secondary displays
-    int statusFontSize = screenWidth * 0.04;     // Status indicators
+    int statusFontSize = screenWidth * 0.06;     // Status indicators
     int buttonFontSize = screenWidth * 0.05;     // Buttons
     int scrollbarLabelFontSize = screenWidth * 0.04; // Scrollbar labels
 
@@ -358,41 +356,51 @@ void MainWindow::configureDisplayStyles()
     labelA->setStyleSheet(scrollbarLabelStyle);
     labelAV->setStyleSheet(scrollbarLabelStyle);
 
-    // Scrollbar styling
-    QString scrollBarStyle = QString("QScrollBar:horizontal {"
-                                     "    background-color: #1A1A1A;"
-                                     "    height: %1px;"
-                                     "    margin: 3px;"
-                                     "    border: 2px solid #444444;"
-                                     "    border-radius: 4px;"
-                                     "}"
-                                     "QScrollBar::handle:horizontal {"
-                                     "    background-color: #0066FF;"
-                                     "    min-height: %2px;"
-                                     "    margin: 3px;"
-                                     "    border: 2px solid #0044CC;"
-                                     "    border-radius: 4px;"
-                                     "}"
-                                     "QScrollBar::handle:horizontal:hover {"
-                                     "    background-color: #0077FF;"
-                                     "    border: 2px solid #0055DD;"
-                                     "}"
-                                     "QScrollBar::handle:horizontal:pressed {"
-                                     "    background-color: #0044CC;"
-                                     "}"
-                                     "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {"
-                                     "    width: 0px;"
-                                     "    border: none;"
-                                     "}"
-                                     "QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {"
-                                     "    background: #151515;"
-                                     "    border-radius: 4px;"
-                                     "}")
-                                 .arg(screenWidth * 0.06)  // Scrollbar height
-                                 .arg(screenWidth * 0.04); // Handle minimum height
+    const QString PRIMARY_COLOR = "#005999";      // Lighter marine blue
+    const QString ACCENT_COLOR = "#0073BF";       // Bright marine blue
+    const QString BORDER_COLOR = "#004C80";       // Mid marine blue
 
-    scrollBarAccel->setStyleSheet(scrollBarStyle);
-    scrollBarMeasurement->setStyleSheet(scrollBarStyle);
+    QString sliderStyle =QString(
+                                 "QSlider::groove:horizontal {"
+                                 "    border: none;"
+                                 "    height: 20px;"
+                                 "    background: %1;"
+                                 "    border-radius: 5px;"
+                                 "    margin: 0px;"
+                                 "}"
+                                 "QSlider::handle:horizontal {"
+                                 "    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,"
+                                 "        stop:0 %2, stop:1 %3);"
+                                 "    border: none;"
+                                 "    width: 30px;"
+                                 "    margin: -5px 0;"
+                                 "    border-radius: 10px;"
+                                 "}"
+                                 "QSlider::sub-page:horizontal {"
+                                 "    background: %4;"
+                                 "    border-radius: 5px;"
+                                 "}"
+                                 "QSlider::add-page:horizontal {"
+                                 "    background: %5;"
+                                 "    border-radius: 5px;"
+                                 "}"
+                                 "QSlider::tick-mark {"
+                                 "    background: %6;"
+                                 "    width: 2px;"
+                                 "    height: 5px;"
+                                 "    margin-top: 5px;"
+                                 "}"
+                                 ).arg(
+                                     "#001F33",              // Groove background
+                                     ACCENT_COLOR,           // Handle gradient start
+                                     PRIMARY_COLOR,          // Handle gradient end
+                                     PRIMARY_COLOR,          // Sub-page (filled)
+                                     "#001F33",              // Add-page (empty)
+                                     BORDER_COLOR            // Tick marks
+                                  );
+
+    sliderAccel->setStyleSheet(sliderStyle);
+    sliderMeasurement->setStyleSheet(sliderStyle);
 }
 
 void MainWindow::updateVarianceDisplays()
@@ -451,21 +459,21 @@ void MainWindow::updateDisplays()
 void MainWindow::configureScrollBars()
 {
     // Configure variance control scrollbars
-    scrollBarAccel->setRange(0, 100);
-    scrollBarMeasurement->setRange(0, 100);
+    sliderAccel->setRange(0, 100);
+    sliderMeasurement->setRange(0, 100);
 
     // Set initial scrollbar positions
     int initialAccelValue = static_cast<int>(accelVariance * 1000.0);
     int initialMeasurementValue = static_cast<int>(measurementVariance * 100.0);
 
-    scrollBarAccel->setValue(initialAccelValue);
-    scrollBarMeasurement->setValue(initialMeasurementValue);
+    sliderAccel->setValue(initialAccelValue);
+    sliderMeasurement->setValue(initialMeasurementValue);
 
     // Style scrollbars
     QString scrollBarStyle = "QScrollBar:vertical { background: #222; width: 30px; }"
                              "QScrollBar::handle:vertical { background: #666; min-height: 30px; }";
-    scrollBarAccel->setStyleSheet(scrollBarStyle);
-    scrollBarMeasurement->setStyleSheet(scrollBarStyle);
+    sliderAccel->setStyleSheet(scrollBarStyle);
+    sliderMeasurement->setStyleSheet(scrollBarStyle);
 }
 
 void MainWindow::initializeFilters()
@@ -546,9 +554,9 @@ void MainWindow::updatePressureAndAltitude()
     // Calculate vertical speed
     vario = altitude_filter->GetXVel();
 
-    // if (varioSound) {
-    //     varioSound->updateVario(vario);
-    // }
+    if (varioSound) {
+        varioSound->updateVario(vario);
+    }
 
     updateDisplays();
     p_start = p_end;
@@ -572,15 +580,13 @@ void MainWindow::getGpsInfo(QList<qreal> info)
     label_speed->setText(QString("%1 km/h").arg(QString::number(groundSpeed, 'f', 1)));
 
     // Update status display - Fixed ambiguous arg() calls
-    QString gpsStatus = QString("GPS: Alt:%1m Lat:%2° Lon:%3° Speed:%4km/h")
-                            .arg(QString::number(altitude, 'f', 1))
+    QString gpsStatus = QString("Lat: %1°   Lon: %2°")
                             .arg(QString::number(latitude, 'f', 6))
-                            .arg(QString::number(longitude, 'f', 6))
-                            .arg(QString::number(groundSpeed, 'f', 1));
+                            .arg(QString::number(longitude, 'f', 6));
     printInfo(gpsStatus);
 }
 
-void MainWindow::scrollBarMeasurement_valueChanged(int value)
+void MainWindow::sliderMeasurement_valueChanged(int value)
 {
     if (value == 0) return;
 
@@ -588,7 +594,7 @@ void MainWindow::scrollBarMeasurement_valueChanged(int value)
     updateVarianceDisplays();
 }
 
-void MainWindow::scrollBarAccel_valueChanged(int value)
+void MainWindow::sliderAccel_valueChanged(int value)
 {
     if (value == 0) return;
 
@@ -618,8 +624,8 @@ void MainWindow::pushReset_clicked()
     // Reset UI elements
     int initialAccelValue = static_cast<int>(accelVariance * 1000.0);
     int initialMeasurementValue = static_cast<int>(measurementVariance * 100.0);
-    scrollBarAccel->setValue(initialAccelValue);
-    scrollBarMeasurement->setValue(initialMeasurementValue);
+    sliderAccel->setValue(initialAccelValue);
+    sliderMeasurement->setValue(initialMeasurementValue);
 
     m_textStatus->clear();
     updateVarianceDisplays();
