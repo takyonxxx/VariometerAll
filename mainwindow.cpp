@@ -79,7 +79,6 @@ MainWindow::MainWindow(QWidget *parent)
 
         initializeFilters();
         initializeSensors();
-
         varioSound = new VarioSound(this);
 
         // QTimer *simTimer = new QTimer(this);
@@ -93,7 +92,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         //     // Adjust vario value
         //     if (increasing) {
-        //         currentVario += 0.5f;
+        //         currentVario += 0.1f;
         //         if (currentVario >= 10.0f) {
         //             increasing = false;
         //             currentVario = 10.0f;
@@ -153,14 +152,6 @@ void MainWindow::setupUi()
     // Set main window properties
     if (objectName().isEmpty())
         setObjectName("MainWindow");
-
-    // Get the screen size and adjust the window size
-    QScreen *screen = QGuiApplication::primaryScreen();
-    QRect screenGeometry = screen->geometry();
-    int screenWidth = screenGeometry.width();
-
-    // Adjust window size to screen width and maintain aspect ratio
-    resize(screenWidth, screenWidth * 1.45);
 
     // Create central widget
     centralwidget = new QWidget(this);
@@ -243,6 +234,8 @@ void MainWindow::setupUi()
     // Create text browser with adjusted height
     m_textStatus = new QTextBrowser(centralwidget);
     m_textStatus->setObjectName("m_textStatus");
+    m_textStatus->setAlignment(Qt::AlignCenter);
+
     // Create buttons with adjusted height
     pushReset = new QPushButton(centralwidget);
     pushReset->setObjectName("pushReset");
@@ -284,7 +277,7 @@ void MainWindow::configureDisplayStyles()
     // Calculate font sizes based on screen width
     int primaryFontSize = screenWidth * 0.12;    // Primary displays
     int secondaryFontSize = screenWidth * 0.08;  // Secondary displays
-    int statusFontSize = screenWidth * 0.06;     // Status indicators
+    int statusFontSize = screenWidth * 0.08;     // Status indicators
     int buttonFontSize = screenWidth * 0.05;     // Buttons
     int scrollbarLabelFontSize = screenWidth * 0.04; // Scrollbar labels
 
@@ -580,7 +573,7 @@ void MainWindow::getGpsInfo(QList<qreal> info)
     label_speed->setText(QString("%1 km/h").arg(QString::number(groundSpeed, 'f', 1)));
 
     // Update status display - Fixed ambiguous arg() calls
-    QString gpsStatus = QString("Lat: %1°   Lon: %2°")
+    QString gpsStatus = QString("%1° - %2°")
                             .arg(QString::number(latitude, 'f', 6))
                             .arg(QString::number(longitude, 'f', 6));
     printInfo(gpsStatus);
@@ -634,8 +627,7 @@ void MainWindow::pushReset_clicked()
 }
 
 void MainWindow::pushExit_clicked()
-{
-    // Graceful shutdown
+{   
     if (varioSound) {
         varioSound->setStop(true);
     }

@@ -12,6 +12,8 @@ CONFIG += c++17
 
 SOURCES += \
     KalmanFilter.cpp \
+    beepthread.cpp \
+    generator.cpp \
     main.cpp \
     mainwindow.cpp \
     readgps.cpp \
@@ -20,6 +22,8 @@ SOURCES += \
 
 HEADERS += \
     KalmanFilter.h \
+    beepthread.h \
+    generator.h \
     mainwindow.h \
     readgps.h \
     sensormanager.h \

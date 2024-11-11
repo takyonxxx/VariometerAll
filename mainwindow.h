@@ -135,7 +135,6 @@ private:
 
     // Control flags
     bool stopReading{false};                // Flag to control sensor reading
-
     // UI
     Ui::MainWindow* ui;                     // User interface pointer
 };

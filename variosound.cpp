@@ -35,23 +35,23 @@ VarioSound::VarioSound(QObject *parent)
             this, &VarioSound::handlePlaybackStateChanged);
 
     m_toneParameters = QList<ToneParameters>{
-        ToneParameters(0.00f, 300, 150, 10),   // Very weak lift
-        ToneParameters(0.05f, 350, 150, 30),   // Added intermediate point
-        ToneParameters(0.10f, 400, 150, 50),   // Weak lift
-        ToneParameters(0.50f, 475, 144, 51),   // Added intermediate point
-        ToneParameters(0.80f, 510, 141, 52),   // Added intermediate point
-        ToneParameters(1.16f, 550, 138, 52),   // Moderate lift
-        ToneParameters(1.50f, 600, 133, 53),   // Added intermediate point
-        ToneParameters(2.00f, 680, 127, 54),   // Added intermediate point
-        ToneParameters(2.67f, 763, 121, 55),   // Strong lift
-        ToneParameters(3.50f, 870, 112, 56),   // Added intermediate point
-        ToneParameters(4.24f, 985, 103, 58),   // Very strong lift
-        ToneParameters(5.00f, 1100, 92, 60),   // Added intermediate point
-        ToneParameters(6.00f, 1234, 80, 62),   // Exceptional lift
-        ToneParameters(7.00f, 1375, 70, 64),   // Added intermediate point
-        ToneParameters(8.00f, 1517, 60, 66),   // Strong thermal
-        ToneParameters(9.00f, 1650, 49, 68),   // Added intermediate point
-        ToneParameters(10.00f, 1800, 38, 70)   // Maximum lift
+        ToneParameters(0.00f, 300, 300, 20),   // Very weak lift
+        ToneParameters(0.05f, 350, 300, 60),   // Added intermediate point
+        ToneParameters(0.10f, 400, 300, 100),  // Weak lift
+        ToneParameters(0.50f, 475, 288, 102),  // Added intermediate point
+        ToneParameters(0.80f, 510, 282, 104),  // Added intermediate point
+        ToneParameters(1.16f, 550, 276, 104),  // Moderate lift
+        ToneParameters(1.50f, 600, 266, 106),  // Added intermediate point
+        ToneParameters(2.00f, 680, 254, 108),  // Added intermediate point
+        ToneParameters(2.67f, 763, 242, 110),  // Strong lift
+        ToneParameters(3.50f, 870, 224, 112),  // Added intermediate point
+        ToneParameters(4.24f, 985, 206, 116),  // Very strong lift
+        ToneParameters(5.00f, 1100, 184, 120), // Added intermediate point
+        ToneParameters(6.00f, 1234, 160, 124), // Exceptional lift
+        ToneParameters(7.00f, 1375, 140, 128), // Added intermediate point
+        ToneParameters(8.00f, 1517, 120, 132), // Strong thermal
+        ToneParameters(9.00f, 1650, 98, 136),  // Added intermediate point
+        ToneParameters(10.00f, 1800, 76, 140)  // Maximum lift
     };
 
     // Set thresholds
@@ -114,8 +114,8 @@ ToneParameters VarioSound::interpolateParameters(float vario)
     ToneParameters result;
     result.vario = vario;
     result.frequency = static_cast<int>(low.frequency + t * (high.frequency - low.frequency));
-    result.cycleLength = static_cast<int>(low.cycleLength + t * (high.cycleLength - low.cycleLength));
-    result.dutyPercent = static_cast<int>(low.dutyPercent + t * (high.dutyPercent - low.dutyPercent));
+    result.cycleLength = static_cast<int>(low.cycleLength + t * (high.cycleLength - low.cycleLength)) / 2;
+    result.dutyPercent = static_cast<int>(low.dutyPercent + t * (high.dutyPercent - low.dutyPercent)) / 2;
 
     return result;
 }
@@ -149,17 +149,15 @@ void VarioSound::calculateSoundCharacteristics(qreal vario)
     float baseFreq = 600.0f;  // Base frequency of our WAV file
     m_currentPlaybackRate = static_cast<float>(params.frequency) / baseFreq;
 
+    m_duration = static_cast<qint64>(params.cycleLength);
+
     // Set durations based on cycle length and duty cycle
-    if (vario <= m_sinkToneOnThreshold) {
-        // Continuous tone for sink
-        m_duration = params.cycleLength;
+    if (vario <= m_sinkToneOnThreshold) {       
         m_silenceDuration = 0;
     } else {
-        m_duration = static_cast<qint64>(params.cycleLength * params.dutyPercent / 100.0f);
-        m_silenceDuration = params.cycleLength - m_duration;
+        m_silenceDuration = m_duration  * params.dutyPercent / 100.0f;
     }
 
-    // Set volume
     m_currentVolume = 1.0;
 }
 
