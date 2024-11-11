@@ -81,36 +81,36 @@ MainWindow::MainWindow(QWidget *parent)
         initializeSensors();
         varioSound = new VarioSound(this);
 
-        // QTimer *simTimer = new QTimer(this);
-        // float currentVario = 0.0f;
-        // bool increasing = true;
+        QTimer *simTimer = new QTimer(this);
+        float currentVario = 0.0f;
+        bool increasing = true;
 
-        // // Connect timer to lambda function that updates vario values
-        // connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
-        //     // Update vario with current value
-        //     varioSound->updateVario(currentVario);
+        // Connect timer to lambda function that updates vario values
+        connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
+            // Update vario with current value
+            varioSound->updateVario(currentVario);
 
-        //     // Adjust vario value
-        //     if (increasing) {
-        //         currentVario += 0.1f;
-        //         if (currentVario >= 10.0f) {
-        //             increasing = false;
-        //             currentVario = 10.0f;
-        //         }
-        //     } else {
-        //         currentVario -= 0.5f;
-        //         if (currentVario <= -5.0f) {
-        //             increasing = true;
-        //             currentVario = -5.0f;
-        //         }
-        //     }
+            // Adjust vario value
+            if (increasing) {
+                currentVario += 0.1f;
+                if (currentVario >= 10.0f) {
+                    increasing = false;
+                    currentVario = 10.0f;
+                }
+            } else {
+                currentVario -= 0.5f;
+                if (currentVario <= -5.0f) {
+                    increasing = true;
+                    currentVario = -5.0f;
+                }
+            }
 
-        //     // Format and display current vario value (optional)
-        //     qDebug() << "Current vario:" << QString::number(currentVario, 'f', 1) << "m/s";
-        // });
+            // Format and display current vario value (optional)
+            qDebug() << "Current vario:" << QString::number(currentVario, 'f', 1) << "m/s";
+        });
 
-        // // Start the simulation timer (updates every 500ms)
-        // simTimer->start(250);
+        // Start the simulation timer (updates every 500ms)
+        simTimer->start(250);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();

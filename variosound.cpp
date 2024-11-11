@@ -145,10 +145,15 @@ void VarioSound::calculateSoundCharacteristics(qreal vario)
     // Get interpolated parameters
     auto params = interpolateParameters(vario);
 
+    // float frequency = 2.94269*vario*vario*vario - 71.112246*vario*vario + 614.136517*vario + 30.845693;
+    // float duration = -38.00*vario + 400.00; // Variable Pause
+
+    // frequency = int(frequency);
+    // duration = long(duration);
+
     // Calculate playback rate to achieve desired frequency
     float baseFreq = 600.0f;  // Base frequency of our WAV file
     m_currentPlaybackRate = static_cast<float>(params.frequency) / baseFreq;
-
     m_duration = static_cast<qint64>(params.cycleLength);
 
     // Set durations based on cycle length and duty cycle
