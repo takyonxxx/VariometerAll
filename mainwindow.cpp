@@ -80,7 +80,38 @@ MainWindow::MainWindow(QWidget *parent)
         initializeFilters();
         initializeSensors();
 
-        varioSound = new VarioSound(this);      
+        varioSound = new VarioSound(this);
+
+        QTimer *simTimer = new QTimer(this);
+        float currentVario = 0.25f;
+        bool increasing = true;
+
+        // Connect timer to lambda function that updates vario values
+        connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
+            // Update vario with current value
+            varioSound->updateVario(currentVario);
+
+            // Adjust vario value
+            if (increasing) {
+                currentVario += 0.1f;
+                if (currentVario >= 5.0f) {
+                    increasing = false;
+                    currentVario = 5.0f;
+                }
+            } else {
+                currentVario -= 0.1f;
+                if (currentVario <= 0.1f) {
+                    increasing = true;
+                    currentVario = 0.1f;
+                }
+            }
+
+            // Format and display current vario value (optional)
+            qDebug() << "Current vario:" << QString::number(currentVario, 'f', 1) << "m/s";
+        });
+
+        // Start the simulation timer (updates every 500ms)
+        simTimer->start(800);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -129,7 +160,7 @@ void MainWindow::setupUi()
     int screenWidth = screenGeometry.width();
 
     // Adjust window size to screen width and maintain aspect ratio
-    resize(screenWidth, screenWidth * 1.45);
+    //resize(screenWidth, screenWidth * 1.45);
 
     // Create central widget
     centralwidget = new QWidget(this);
@@ -146,30 +177,22 @@ void MainWindow::setupUi()
     gridLayout->setObjectName("gridLayout");
     gridLayout->setSpacing(5);
 
-    // Calculate sizes based on screen width
-    int labelWidth = screenWidth * 0.25;
-    int scrollBarWidth = screenWidth * 0.45;
-
     // Create all labels
     labelMV = new QLabel(centralwidget);
     labelMV->setObjectName("labelMV");
     labelMV->setText("0");
-    labelMV->setMaximumWidth(labelWidth);
 
     labelAV = new QLabel(centralwidget);
     labelAV->setObjectName("labelAV");
     labelAV->setText("0");
-    labelAV->setMaximumWidth(labelWidth);
 
     labelM = new QLabel(centralwidget);
     labelM->setObjectName("labelM");
     labelM->setText("Measure : ");
-    labelM->setMaximumWidth(labelWidth);
 
     labelA = new QLabel(centralwidget);
     labelA->setObjectName("labelA");
     labelA->setText("Accel : ");
-    labelA->setMaximumWidth(labelWidth);
 
     labelSensor = new QLabel(centralwidget);
     labelSensor->setObjectName("labelSensor");
@@ -209,31 +232,25 @@ void MainWindow::setupUi()
     // Create scroll bars
     scrollBarAccel = new QScrollBar(centralwidget);
     scrollBarAccel->setObjectName("scrollBarAccel");
-    scrollBarAccel->setFixedWidth(scrollBarWidth);
     scrollBarAccel->setMaximum(100);
     scrollBarAccel->setOrientation(Qt::Horizontal);
 
     scrollBarMeasurement = new QScrollBar(centralwidget);
     scrollBarMeasurement->setObjectName("scrollBarMeasurement");
-    scrollBarMeasurement->setFixedWidth(scrollBarWidth);
     scrollBarMeasurement->setMaximum(100);
     scrollBarMeasurement->setOrientation(Qt::Horizontal);
 
     // Create text browser with adjusted height
     m_textStatus = new QTextBrowser(centralwidget);
     m_textStatus->setObjectName("m_textStatus");
-    m_textStatus->setMaximumHeight(screenWidth * 0.1); // Proportional to screen width
-
     // Create buttons with adjusted height
     pushReset = new QPushButton(centralwidget);
     pushReset->setObjectName("pushReset");
     pushReset->setText("Reset");
-    pushReset->setFixedHeight(screenWidth * 0.12);
 
     pushExit = new QPushButton(centralwidget);
     pushExit->setObjectName("pushExit");
     pushExit->setText("Exit");
-    pushExit->setFixedHeight(screenWidth * 0.12);
 
     // Add widgets to grid layout
     gridLayout->addWidget(labelMV, 10, 2, 1, 1);
@@ -264,10 +281,12 @@ void MainWindow::configureDisplayStyles()
     QScreen *screen = QGuiApplication::primaryScreen();
     int screenWidth = screen->geometry().width();
 
+    screenWidth = screenWidth / 5.0;
+
     // Calculate font sizes based on screen width
     int primaryFontSize = screenWidth * 0.10;    // Primary displays
     int secondaryFontSize = screenWidth * 0.08;  // Secondary displays
-    int statusFontSize = screenWidth * 0.06;     // Status indicators
+    int statusFontSize = screenWidth * 0.04;     // Status indicators
     int buttonFontSize = screenWidth * 0.05;     // Buttons
     int scrollbarLabelFontSize = screenWidth * 0.04; // Scrollbar labels
 
@@ -454,13 +473,12 @@ void MainWindow::initializeFilters()
     // Initialize Kalman filters with default parameters
     pressure_filter = std::make_shared<KalmanFilter>(accelVariance);
     altitude_filter = std::make_shared<KalmanFilter>(accelVariance);
-
     // Set initial states
     pressure_filter->Reset(SEA_LEVEL_PRESSURE);
     altitude_filter->Reset(altitude);
-
     // Initialize timing
     p_start = QDateTime::currentDateTime();
+    p_end = p_start;
 }
 
 void MainWindow::initializeSensors()
@@ -471,8 +489,8 @@ void MainWindow::initializeSensors()
     sensorManager->start();
 
     // Initialize GPS reader
-    // readGps = new ReadGps(this);
-    // connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
+    readGps = new ReadGps(this);
+    connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
 }
 
 void MainWindow::getSensorInfo(QList<qreal> info)
@@ -490,7 +508,7 @@ void MainWindow::getSensorInfo(QList<qreal> info)
 }
 
 void MainWindow::processSensorData(const QList<qreal>& info)
-{
+{    
     pressure = info.at(0);
     temperature = info.at(1);
     quint64 timestamp = static_cast<quint64>(info.at(2));
@@ -499,13 +517,13 @@ void MainWindow::processSensorData(const QList<qreal>& info)
         pDeltaT = static_cast<qreal>(timestamp - lastPressTimestamp) / 1000000.0f;
 
         if (pDeltaT > 0) {
-            updatePressureAndAltitude(timestamp);
+            updatePressureAndAltitude();
         }
     }
     lastPressTimestamp = timestamp;
 }
 
-void MainWindow::updatePressureAndAltitude(quint64 timestamp)
+void MainWindow::updatePressureAndAltitude()
 {
     p_end = QDateTime::currentDateTime();
     qint64 elapsedTimeMillis = p_start.msecsTo(p_end);
@@ -527,6 +545,10 @@ void MainWindow::updatePressureAndAltitude(quint64 timestamp)
 
     // Calculate vertical speed
     vario = altitude_filter->GetXVel();
+
+    // if (varioSound) {
+    //     varioSound->updateVario(vario);
+    // }
 
     updateDisplays();
     p_start = p_end;
@@ -561,18 +583,6 @@ void MainWindow::getGpsInfo(QList<qreal> info)
 void MainWindow::scrollBarMeasurement_valueChanged(int value)
 {
     if (value == 0) return;
-
-    qreal mappedValue;
-    if (value <= 50) {
-        mappedValue = -50 + static_cast<qreal>(value);
-    } else {
-        mappedValue = static_cast<qreal>(value - 50);
-    }
-
-    qreal normalizedValue = mappedValue / 50.0;
-    if (varioSound) {
-        varioSound->updateVario(normalizedValue);
-    }
 
     measurementVariance = static_cast<qreal>(value) / 100.0;
     updateVarianceDisplays();

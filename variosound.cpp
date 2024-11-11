@@ -1,186 +1,115 @@
-
 #include "variosound.h"
 
 VarioSound::VarioSound(QObject *parent)
     : QObject(parent)
 {
-    QAudioDevice outputDevice;
-    for (auto &device: QMediaDevices::audioOutputs()) {
-        outputDevice = device;
-        break;
-    }
+    // Initialize media player
+    m_mediaPlayer = new QMediaPlayer(this);
+    m_audioOutput = new QAudioOutput(this);
+    m_mediaPlayer->setAudioOutput(m_audioOutput);
 
-    m_format.setSampleFormat(QAudioFormat::Int16);
-    m_format.setSampleRate(m_sampleRate);
-    m_format.setChannelCount(1);
-    m_bufferLength = m_format.bytesForDuration(BufferDurationUs);
-    m_buffer.resize(m_bufferLength);
-    m_buffer.fill(0);
+    // Load WAV file from resources
+    m_mediaPlayer->setSource(QUrl("qrc:/sounds/554Hz.wav"));
+    m_audioOutput->setVolume(1.0);
 
-    if (outputDevice.isFormatSupported(m_format)) {
-        m_audioOutput = new QAudioSink(outputDevice, m_format, this);
-        connect(m_audioOutput, &QAudioSink::stateChanged, this, &VarioSound::handleStateChanged);
-    }
+    // Create timer for managing silence between beeps
+    m_delayTimer = new QTimer(this);
+    m_delayTimer->setSingleShot(true);
+    connect(m_delayTimer, &QTimer::timeout, this, &VarioSound::onDelayFinished);
 
-    m_pulseTimer = new QTimer(this);
-    connect(m_pulseTimer, &QTimer::timeout, this, &VarioSound::updatePulseTimer);
+    // Connect to handle playback state changes
+    connect(m_mediaPlayer, &QMediaPlayer::playbackStateChanged,
+            this, &VarioSound::handlePlaybackStateChanged);
 
-    m_tone = Tone(m_baseFrequency, 0.8, 0.0);
+    // Set initial position to play only a short segment
+    m_startPosition = 500;  // Start at 500ms
+    m_duration = 200;      // Play for 200ms
 }
 
 VarioSound::~VarioSound()
 {
+    if (m_mediaPlayer) {
+        m_mediaPlayer->stop();
+        delete m_mediaPlayer;
+    }
+    if (m_delayTimer) {
+        m_delayTimer->stop();
+        delete m_delayTimer;
+    }
     if (m_audioOutput) {
-        m_audioOutput->stop();
+        delete m_audioOutput;
     }
 }
 
-void VarioSound::generateTone(const Tone &tone, const QAudioFormat &format, QByteArray &buffer, bool isPulseOn)
+void VarioSound::calculateSoundCharacteristics(qreal vario)
 {
-    const int channelBytes = format.bytesPerSample();
-    const int sampleBytes = format.channelCount() * channelBytes;
-    int length = buffer.size();
-    const int numSamples = buffer.size() / sampleBytes;
-    unsigned char *ptr = reinterpret_cast<unsigned char *>(buffer.data());
-    static qreal phase = 0.0;
-    static qreal lastFreq = tone.baseFrequency;
-    static qreal lastAmplitude = 0.0;
-
-    const qreal d = 2 * M_PI / format.sampleRate();
-    qreal targetFreq = tone.baseFrequency + (tone.vario * 60);
-    qreal targetAmplitude = isPulseOn ? tone.amplitude : 0.0;
-
-    // Fade parametreleri
-    const int fadeLength = numSamples / 10;  // İlk ve son %10'luk kısım için fade
-    const qreal freqChangeRate = 0.1;        // Frekans değişim hızı (0-1 arası)
-
-    int currentSample = 0;
-    while (length) {
-        // Yumuşak frekans geçişi
-        lastFreq = lastFreq + (targetFreq - lastFreq) * freqChangeRate;
-
-        // Fade in/out ve amplitude yumuşatma
-        qreal fadeMultiplier = 1.0;
-        if (currentSample < fadeLength) {
-            // Fade in
-            fadeMultiplier = static_cast<qreal>(currentSample) / fadeLength;
-        } else if (currentSample > numSamples - fadeLength) {
-            // Fade out
-            fadeMultiplier = static_cast<qreal>(numSamples - currentSample) / fadeLength;
-        }
-
-        // Amplitude yumuşatma
-        lastAmplitude = lastAmplitude + (targetAmplitude - lastAmplitude) * 0.1;
-
-        // Son amplitude değeri
-        qreal currentAmplitude = lastAmplitude * fadeMultiplier;
-
-        // Sinüs dalgası üretimi
-        const qreal x = currentAmplitude * qSin(phase);
-        const qint16 value = realToPcm(x);
-
-        for (int i = 0; i < format.channelCount(); ++i) {
-            qToLittleEndian<qint16>(value, ptr);
-            ptr += channelBytes;
-            length -= channelBytes;
-        }
-
-        phase += d * lastFreq;
-        while (phase > 2 * M_PI)
-            phase -= 2 * M_PI;
-
-        currentSample++;
-    }
-}
-
-VarioSound::SoundCharacteristics VarioSound::calculateSoundCharacteristics(qreal vario)
-{
-    SoundCharacteristics chars;
-
     if (qAbs(vario) < m_deadband) {
-        chars.amplitude = 0.0;
-        chars.frequency = m_baseFrequency;
-        chars.pulseLength = 0;
-        chars.silenceLength = 1000;
-        return chars;
+        m_currentPlaybackRate = 1.0;
+        m_currentVolume = 0.0;
+        m_silenceDuration = 500;
+        return;
     }
 
     if (vario > 0) {
-        chars.frequency = m_baseFrequency + (vario * 100);
-        chars.pulseLength = 50;  // Yüksek hızda daha kısa bipler
-        chars.silenceLength = static_cast<int>(75 - (vario * 10)); // Hızla azalan sessizlik
-        chars.amplitude = 0.8;
+        // Increase playback rate with climb rate
+        m_currentPlaybackRate = 1.0 + (vario * 0.2); // 20% faster per m/s
+        m_currentVolume = 1.0;
+        // Decrease silence as vario increases (faster beeps)
+        m_silenceDuration = static_cast<int>(400 - (vario * 50));  // 400ms to 150ms
+        m_silenceDuration = std::max(150, m_silenceDuration);
     } else {
-        chars.frequency = m_baseFrequency + (vario * 40);
-        chars.pulseLength = 1000;
-        chars.silenceLength = 0;
-        chars.amplitude = 0.8;
+        // Decrease playback rate with sink rate
+        m_currentPlaybackRate = 1.0 + (vario * 0.1); // 10% slower per m/s
+        m_currentVolume = 0.8;
+        m_silenceDuration = 400;  // Constant silence for sink
     }
-
-    return chars;
 }
 
-void VarioSound::calculateToneParameters()
+void VarioSound::playSound()
 {
-    auto chars = calculateSoundCharacteristics(m_currentVario);
+    if (!m_mediaPlayer || m_stop)
+        return;
 
-    m_tone.baseFrequency = chars.frequency;
-    m_tone.amplitude = chars.amplitude;
-    m_tone.pulseLength = chars.pulseLength;
-    m_tone.silenceLength = chars.silenceLength;
+    m_mediaPlayer->setPosition(m_startPosition);
+    m_mediaPlayer->play();
 
-    if (m_tone.pulseLength > 0) {
-        m_pulseTimer->start(m_tone.pulseLength + m_tone.silenceLength);
-    } else {
-        m_pulseTimer->stop();
+    // Stop after duration
+    QTimer::singleShot(m_duration, this, [this]() {
+        if (m_mediaPlayer) {
+            m_mediaPlayer->stop();
+        }
+    });
+}
+
+void VarioSound::handlePlaybackStateChanged(QMediaPlayer::PlaybackState state)
+{
+    if (state == QMediaPlayer::StoppedState && !m_stop) {
+        // Start the silence period
+        m_delayTimer->start(m_silenceDuration);
+    }
+}
+
+void VarioSound::onDelayFinished()
+{
+    // When the silence period is over, play the next beep if we're not stopped
+    if (!m_stop) {
+        playSound();
     }
 }
 
 void VarioSound::updateVario(qreal vario)
 {
     m_currentVario = vario;
-    m_tone.vario = vario;
-    calculateToneParameters();
-    playSound();
-}
+    calculateSoundCharacteristics(vario);
 
-void VarioSound::updatePulseTimer()
-{
-    m_isPulseOn = !m_isPulseOn;
-    if (!m_stop) {
+    // Update player settings
+    if (m_mediaPlayer && m_audioOutput) {
+        m_mediaPlayer->setPlaybackRate(m_currentPlaybackRate);
+        m_audioOutput->setVolume(m_currentVolume);
+    }
+
+    if (!m_delayTimer->isActive()) {
         playSound();
-    }
-}
-
-void VarioSound::playSound()
-{
-    if (!m_audioOutput || m_stop)
-        return;
-
-    generateTone(m_tone, m_format, m_buffer, m_isPulseOn);
-    m_audioOutputIODevice.close();
-    m_audioOutputIODevice.setBuffer(&m_buffer);
-
-    if (!m_audioOutputIODevice.open(QIODevice::ReadOnly)) {
-        return;
-    }
-
-    m_audioOutput->start(&m_audioOutputIODevice);
-}
-
-void VarioSound::handleStateChanged(QAudio::State newState)
-{
-    switch (newState) {
-    case QAudio::IdleState:
-        m_audioOutput->stop();
-        break;
-    case QAudio::StoppedState:
-        if (m_audioOutput->error() != QAudio::NoError) {
-            qDebug() << "Audio error:" << m_audioOutput->error();
-        }
-        break;
-    default:
-        break;
     }
 }
 
@@ -188,9 +117,16 @@ void VarioSound::setStop(bool newStop)
 {
     m_stop = newStop;
     if (m_stop) {
-        m_pulseTimer->stop();
-        m_audioOutput->stop();
+        if (m_delayTimer) {
+            m_delayTimer->stop();
+        }
+        if (m_mediaPlayer) {
+            m_mediaPlayer->stop();
+        }
     } else {
-        calculateToneParameters();
+        calculateSoundCharacteristics(m_currentVario);
+        if (!m_delayTimer->isActive()) {
+            playSound();
+        }
     }
 }

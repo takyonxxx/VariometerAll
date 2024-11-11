@@ -68,7 +68,7 @@ private:
     void initializeFilters();
     void initializeSensors();
     void processSensorData(const QList<qreal>& info);
-    void updatePressureAndAltitude(quint64 timestamp);
+    void updatePressureAndAltitude();
     void updateDisplays();
     void updateVarianceDisplays();
     void getSensorInfo(QList<qreal> info);
@@ -112,9 +112,10 @@ private:
     // Timing variables
     qreal p_dt{0.0};                        // Time delta for calculations
     quint64 lastPressTimestamp{0};          // Timestamp of last pressure reading
-    qreal pDeltaT{0.0};                     // Time delta between pressure readings
-    QDateTime p_start;                      // Start time for calculations
+    qreal pDeltaT{0.0};                     // Time delta between pressure readings    
     QDateTime p_end;                        // End time for calculations
+    QDateTime p_start;
+
 
     // Kalman filter parameters
     qreal accelVariance{KF_VAR_ACCEL};             // Acceleration variance

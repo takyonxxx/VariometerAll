@@ -84,7 +84,7 @@ void SensorManager::run()
              break;
 
          emit sendInfo(readPressure());
-         msleep(500);
+         msleep(250);
      }
 }
 
