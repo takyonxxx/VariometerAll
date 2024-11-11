@@ -79,38 +79,44 @@ MainWindow::MainWindow(QWidget *parent)
 
         initializeFilters();
         initializeSensors();
-        varioSound = new VarioSound(this);
 
-        QTimer *simTimer = new QTimer(this);
-        float currentVario = 0.0f;
-        bool increasing = true;
+        beepThread = new BeepThread(this);
+        beepThread->setVolume(100.);
+        beepThread->startBeep();
+        beepThread->start();
 
-        // Connect timer to lambda function that updates vario values
-        connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
-            // Update vario with current value
-            varioSound->updateVario(currentVario);
+        // QTimer *simTimer = new QTimer(this);
+        // float currentVario = 0.0f;
+        // bool increasing = true;
+        // p_dt = 1.0;
 
-            // Adjust vario value
-            if (increasing) {
-                currentVario += 0.1f;
-                if (currentVario >= 10.0f) {
-                    increasing = false;
-                    currentVario = 10.0f;
-                }
-            } else {
-                currentVario -= 0.5f;
-                if (currentVario <= -5.0f) {
-                    increasing = true;
-                    currentVario = -5.0f;
-                }
-            }
+        // // Connect timer to lambda function that updates vario values
+        // connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
+        //     // Update vario with current value
+        //     if(beepThread)
+        //         beepThread->SetVario(currentVario, p_dt);
 
-            // Format and display current vario value (optional)
-            qDebug() << "Current vario:" << QString::number(currentVario, 'f', 1) << "m/s";
-        });
+        //     // Adjust vario value
+        //     if (increasing) {
+        //         currentVario += 0.1f;
+        //         if (currentVario >= 5.0f) {
+        //             increasing = false;
+        //             currentVario = 5.0f;
+        //         }
+        //     } else {
+        //         currentVario -= 0.5f;
+        //         if (currentVario <= -3.0f) {
+        //             increasing = true;
+        //             currentVario = -3.0f;
+        //         }
+        //     }
 
-        // Start the simulation timer (updates every 500ms)
-        simTimer->start(250);
+        //     // // Format and display current vario value (optional)
+        //     qDebug() << "Current vario:" << QString::number(currentVario, 'f', 1) << "m/s";
+        // });
+
+        // // Start the simulation timer (updates every 500ms)
+        // simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -488,10 +494,10 @@ void MainWindow::initializeSensors()
     sensorManager = new SensorManager(this);
     connect(sensorManager, &SensorManager::sendInfo, this, &MainWindow::getSensorInfo);
     sensorManager->start();
-
-    // Initialize GPS reader
+#ifdef Q_OS_ANDROID
     readGps = new ReadGps(this);
     connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
+#endif
 }
 
 void MainWindow::getSensorInfo(QList<qreal> info)
@@ -547,9 +553,8 @@ void MainWindow::updatePressureAndAltitude()
     // Calculate vertical speed
     vario = altitude_filter->GetXVel();
 
-    if (varioSound) {
-        varioSound->updateVario(vario);
-    }
+    if(beepThread)
+        beepThread->SetVario(vario, p_dt);
 
     updateDisplays();
     p_start = p_end;
@@ -628,16 +633,15 @@ void MainWindow::pushReset_clicked()
 
 void MainWindow::pushExit_clicked()
 {   
-    if (varioSound) {
-        varioSound->setStop(true);
+    if (beepThread) {
+        beepThread->stopBeep();
     }
+
     if (sensorManager) {
         sensorManager->setStop(true);
     }
 
-    // Allow time for threads to stop
     QThread::msleep(100);
-
     QCoreApplication::exit(0);
 }
 
@@ -650,12 +654,12 @@ MainWindow::~MainWindow()
         delete sensorManager;
     }
 
-    if (varioSound) {
-        delete varioSound;
-    }
-
     if (readGps) {
         delete readGps;
+    }    
+
+    if (beepThread) {
+        delete beepThread;
     }
 
     delete ui;

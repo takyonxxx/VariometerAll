@@ -133,30 +133,28 @@ void BeepThread::run()
             qreal beepDuration = m_varioFunction->getValue(qMin(m_vario, 10.0)) * 1000;
 
             Generator* newGen = new Generator(m_format,
-                                              beepDuration * 1000,
                                               static_cast<int>(currentTone),
                                               nullptr);
-            newGen->start();
 
             if (m_generator) {
                 m_generator->stop();
                 delete m_generator;
             }
             m_generator = newGen;
+            m_generator->start();
 
             if (m_audioOutput && m_generator) {
                 m_audioOutput->start(m_generator);
                 Sleeper::msleep(beepDuration);
                 m_audioOutput->stop();
 
-                qreal silenceDuration = beepDuration * (m_vario > 5.0 ? 0.5 : 0.8);
+                qreal silenceDuration = beepDuration;
                 Sleeper::msleep(silenceDuration);
             }
         }
         else if (m_vario <= m_sinkToneOnThreshold)
         {
             Generator* newGen = new Generator(m_format,
-                                              m_durationUSeconds,
                                               static_cast<int>(m_toneSampleRateHz * 0.5),
                                               nullptr);
             newGen->start();
@@ -192,24 +190,23 @@ void BeepThread::run()
         delete m_audioOutput;
         m_audioOutput = nullptr;
     }
-
-    emit finished();
 }
 
 void BeepThread::initializeAudio()
 {
-    m_format.setSampleRate(44100);
-    m_format.setChannelCount(1);
-    m_format.setSampleFormat(QAudioFormat::Int16);
+    m_format.setSampleRate(48000);
+    m_format.setChannelCount(2);
+    m_format.setSampleFormat(QAudioFormat::Float);
 
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
     if (!device.isFormatSupported(m_format)) {
+        qWarning() << "Default format not supported - using preferred format";
         m_format = device.preferredFormat();
     }
 
     delete m_audioOutput;
     m_audioOutput = new QAudioSink(device, m_format, nullptr);
-    m_audioOutput->setVolume(0.8);
+    m_audioOutput->setVolume(1.0);
 }
 
 void BeepThread::startBeep()

@@ -13,22 +13,18 @@ CONFIG += c++17
 SOURCES += \
     KalmanFilter.cpp \
     beepthread.cpp \
-    generator.cpp \
     main.cpp \
     mainwindow.cpp \
     readgps.cpp \
-    sensormanager.cpp \
-    variosound.cpp
+    sensormanager.cpp
 
 HEADERS += \
     KalmanFilter.h \
     beepthread.h \
-    generator.h \
     mainwindow.h \
     readgps.h \
     sensormanager.h \
-    utils.h \
-    variosound.h
+    utils.h
 
 FORMS += \
     mainwindow.ui

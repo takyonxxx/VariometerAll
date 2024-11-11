@@ -10,7 +10,79 @@
 #include <QIODevice>
 #include <QVector>
 #include <QPoint>
-#include "generator.h"
+#include <QDebug>
+
+class Generator : public QIODevice
+{
+public:
+    Generator(const QAudioFormat &format,
+              int frequency,
+              QObject *parent)
+        : QIODevice(parent)
+        , m_format(format)
+        , m_frequency(frequency)
+        , m_phase(0)
+    {
+        m_omega = 2.0 * M_PI * frequency / m_format.sampleRate();
+    }
+
+    void start() {
+        open(QIODevice::ReadOnly);
+    }
+
+    void stop() {
+        close();
+    }
+
+protected:
+    qint64 readData(char *data, qint64 maxSize) override
+    {
+        // Always generate exactly 1024 stereo samples (8192 bytes)
+        const int samplesPerPacket = 1024;
+        const int bytesPerPacket = samplesPerPacket * sizeof(float) * m_format.channelCount();
+
+        if (maxSize < bytesPerPacket) {
+            return 0;
+        }
+
+        float* ptr = reinterpret_cast<float*>(data);
+
+        // Generate one packet of samples
+        for (int i = 0; i < samplesPerPacket; ++i) {
+            float value = 0.5f * std::sin(m_phase);
+            m_phase += m_omega;
+
+            // Keep phase in reasonable range
+            if (m_phase > 2.0 * M_PI) {
+                m_phase -= 2.0 * M_PI;
+            }
+
+            // Write to both channels
+            *ptr++ = value;  // Left
+            *ptr++ = value;  // Right
+        }
+
+        return bytesPerPacket;
+    }
+
+    qint64 writeData(const char *data, qint64 len) override
+    {
+        Q_UNUSED(data);
+        Q_UNUSED(len);
+        return 0;
+    }
+
+    qint64 bytesAvailable() const override
+    {
+        return 1024 * sizeof(float) * m_format.channelCount();
+    }
+
+private:
+    QAudioFormat m_format;
+    int m_frequency;
+    double m_omega;
+    double m_phase;
+};
 
 class PiecewiseLinearFunction
 {
@@ -74,9 +146,6 @@ private:
     float m_sinkToneOnThreshold{0.0};
 
     bool m_running{false};
-
-signals:
-    void finished();
 };
 
 #endif // BEEPTHREAD_H
