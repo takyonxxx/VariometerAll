@@ -83,7 +83,7 @@ MainWindow::MainWindow(QWidget *parent)
         varioSound = new VarioSound(this);
 
         QTimer *simTimer = new QTimer(this);
-        float currentVario = 0.25f;
+        float currentVario = 0.0f;
         bool increasing = true;
 
         // Connect timer to lambda function that updates vario values
@@ -93,16 +93,16 @@ MainWindow::MainWindow(QWidget *parent)
 
             // Adjust vario value
             if (increasing) {
-                currentVario += 0.1f;
+                currentVario += 0.25f;
                 if (currentVario >= 5.0f) {
                     increasing = false;
                     currentVario = 5.0f;
                 }
             } else {
-                currentVario -= 0.1f;
+                currentVario -= 0.25f;
                 if (currentVario <= 0.1f) {
                     increasing = true;
-                    currentVario = 0.1f;
+                    currentVario = 0.0f;
                 }
             }
 
@@ -111,7 +111,7 @@ MainWindow::MainWindow(QWidget *parent)
         });
 
         // Start the simulation timer (updates every 500ms)
-        simTimer->start(800);
+        simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();

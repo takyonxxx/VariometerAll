@@ -57,6 +57,6 @@
         <file>macos/Assets.xcassets/AppIcon.appiconset/Contents.json</file>
         <file>macos/.DS_Store</file>
         <file>macos/Info.plist</file>
-        <file>sounds/554Hz.wav</file>
+        <file>sounds/vario_tone.wav</file>
     </qresource>
 </RCC>
