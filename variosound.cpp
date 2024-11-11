@@ -23,9 +23,9 @@ VarioSound::VarioSound(QObject *parent)
     connect(m_stopTimer, &QTimer::timeout, this, &VarioSound::stopSound);
 
     // Set initial position and durations
-    m_startPosition = 100;
+    m_startPosition = 30;
     m_initial_duration = 400;
-    m_initial_silenceDuration = 50;
+    m_initial_silenceDuration = 75;
     m_duration = m_initial_duration;
     m_silenceDuration = m_initial_silenceDuration;
 }
@@ -65,12 +65,12 @@ void VarioSound::calculateSoundCharacteristics(qreal vario)
         m_currentVolume = 1.0;
 
         // Dynamic sound duration for climbing
-        m_duration = static_cast<qint64>(m_initial_duration - (vario * 40));
-        m_duration = std::max(static_cast<qint64>(10), m_duration);
+        m_duration = static_cast<qint64>(m_initial_duration - (vario * 50));
+        m_duration = std::max(static_cast<qint64>(50), m_duration);
 
         // Dynamic silence duration for climbing
-        m_silenceDuration = static_cast<int>(m_initial_silenceDuration - (vario * 10));
-        m_silenceDuration = std::max(10, m_silenceDuration);
+        m_silenceDuration = static_cast<int>(m_initial_silenceDuration - (vario * 25));
+        m_silenceDuration = std::max(5, m_silenceDuration);
     } else {
         m_currentPlaybackRate = 1.0 + (vario * 0.06);
         m_currentVolume = 0.5;
