@@ -10,14 +10,13 @@ VarioSound::VarioSound(QObject *parent)
     , m_mediaLoaded(false)
 {
     m_climbToneOnThreshold = 0.2f;
-    m_climbToneOffThreshold = 0.15f;
-    m_sinkToneOnThreshold = -2.5f;
-    m_sinkToneOffThreshold = -2.5f;
+    m_sinkToneOnThreshold = -2.0f;
 
     m_currentVario = 0.0;
     m_currentPlaybackRate = 1.0;
     m_currentVolume = 1.0;
-    m_duration = 400;
+    m_duration = 600;
+    m_frequency = 600;
 }
 
 VarioSound::~VarioSound()
@@ -84,9 +83,43 @@ bool VarioSound::initializeAudio()
     return true;
 }
 
-void VarioSound::calculateSoundCharacteristics(qreal vario)
+void VarioSound::calculateSoundCharacteristics()
 {
-    // ... (same as before)
+    // Calculate frequency based on vario value
+    m_frequency = 2.94269*m_currentVario*m_currentVario*m_currentVario - 71.112246*m_currentVario*m_currentVario +
+                      614.136517*m_currentVario + 30.845693;
+
+    // Calculate duration
+    m_duration = -38.00*m_currentVario + 400.00; // Variable Pause
+
+    m_frequency = int(m_frequency);
+    m_duration = long(m_duration);
+
+    // Calculate playback rate based on target frequency
+    float baseFreq = 600.0f;  // Base frequency of our WAV file
+    m_currentPlaybackRate = static_cast<float>(m_frequency) / baseFreq;
+
+    // Set volume
+    m_currentVolume = 1.0;
+
+    m_currentVario = -3.0;
+
+    if (m_currentVario <= m_sinkToneOnThreshold) {
+        m_frequency = 300;
+        m_duration = 500;
+    }
+    else if (m_currentVario <= m_climbToneOnThreshold) {
+        m_currentVolume = 0.0;
+        m_duration = 0;
+    }
+
+    // Debug output
+    qDebug() << "Sound characteristics calculated:"
+             << "\n  Vario:" << m_currentVario
+             << "\n  Frequency:" << m_frequency
+             << "\n  Duration:" << m_duration
+             << "\n  Playback Rate:" << m_currentPlaybackRate
+             << "\n  Volume:" << m_currentVolume;
 }
 
 void VarioSound::stopSound()
@@ -98,10 +131,10 @@ void VarioSound::stopSound()
 
 void VarioSound::playSound()
 {
-    if (!m_mediaPlayer || m_stop || m_currentVolume < 0.01 || !m_mediaLoaded)
+    if (!m_mediaPlayer || m_stop || !m_mediaLoaded)
         return;
 
-    calculateSoundCharacteristics(m_currentVario);
+    calculateSoundCharacteristics();
 
     if (m_mediaPlayer && m_audioOutput) {
         m_mediaPlayer->setPlaybackRate(m_currentPlaybackRate);
@@ -109,16 +142,11 @@ void VarioSound::playSound()
 
         m_mediaPlayer->setPosition(0);
         m_mediaPlayer->play();
-
-        qDebug() << "Playing sound with rate:" << m_currentPlaybackRate
-                 << "volume:" << m_currentVolume;
     }
 }
 
 void VarioSound::handlePlaybackStateChanged(QMediaPlayer::PlaybackState state)
 {
-    qDebug() << "Playback state changed:" << state;
-
     if (state == QMediaPlayer::StoppedState && !m_stop) {
         if (m_duration == 0) {
             m_mediaPlayer->setPosition(0);
@@ -129,10 +157,8 @@ void VarioSound::handlePlaybackStateChanged(QMediaPlayer::PlaybackState state)
 
 void VarioSound::handleMediaStatusChanged(QMediaPlayer::MediaStatus status)
 {
-    qDebug() << "Media status changed:" << status;
     if (status == QMediaPlayer::LoadedMedia) {
         m_mediaLoaded = true;
-        qDebug() << "Media loaded successfully";
     }
 }
 
@@ -153,13 +179,10 @@ void VarioSound::setStop()
 
 void VarioSound::run()
 {
-    // Initialize audio system
     if (!initializeAudio()) {
         qDebug() << "Failed to initialize audio system!";
         return;
     }
-
-    qDebug() << "Starting sound loop";
 
     while (!m_stop)
     {

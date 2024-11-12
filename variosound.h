@@ -29,7 +29,7 @@ private slots:
     void handleErrorOccurred(QMediaPlayer::Error error, const QString &errorString);
 
 private:
-    void calculateSoundCharacteristics(qreal vario);
+    void calculateSoundCharacteristics();
     void playSound();
     void stopSound();
     bool initializeAudio();
@@ -38,14 +38,13 @@ private:
     QPointer<QAudioOutput> m_audioOutput;
 
     float m_climbToneOnThreshold;
-    float m_climbToneOffThreshold;
     float m_sinkToneOnThreshold;
-    float m_sinkToneOffThreshold;
 
     qreal m_currentVario;
     float m_currentPlaybackRate;
     float m_currentVolume;
     long m_duration;
+    long m_frequency;
     bool m_stop;
     bool m_mediaLoaded;
 };
