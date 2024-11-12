@@ -4,6 +4,7 @@
 #include <QThread>
 #include <QMediaPlayer>
 #include <QAudioOutput>
+#include <QAudioFormat>
 #include <QDebug>
 #include <QFile>
 #include <QTimer>

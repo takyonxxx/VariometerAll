@@ -102,11 +102,10 @@ void VarioSound::calculateSoundCharacteristics()
     // Set volume
     m_currentVolume = 1.0;
 
-    m_currentVario = -3.0;
-
     if (m_currentVario <= m_sinkToneOnThreshold) {
         m_frequency = 300;
-        m_duration = 500;
+        m_duration = 1000;
+        m_currentPlaybackRate = 0.3;
     }
     else if (m_currentVario <= m_climbToneOnThreshold) {
         m_currentVolume = 0.0;
@@ -125,7 +124,7 @@ void VarioSound::calculateSoundCharacteristics()
 void VarioSound::stopSound()
 {
     if (m_mediaPlayer && m_mediaPlayer->playbackState() == QMediaPlayer::PlayingState) {
-        m_mediaPlayer->pause();
+        m_mediaPlayer->stop();
     }
 }
 

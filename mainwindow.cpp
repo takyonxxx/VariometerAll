@@ -83,32 +83,32 @@ MainWindow::MainWindow(QWidget *parent)
         varioSound = new VarioSound(this);
         varioSound->start();
 
-        QTimer *simTimer = new QTimer(this);
-        float currentVario = 0.0f;
-        bool increasing = true;
+        // QTimer *simTimer = new QTimer(this);
+        // float currentVario = 0.0f;
+        // bool increasing = true;
 
-        connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
+        // connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
 
-            if(varioSound)
-                varioSound->updateVario(currentVario);
+        //     if(varioSound)
+        //         varioSound->updateVario(currentVario);
 
-            // Adjust vario value
-            if (increasing) {
-                currentVario += 0.1f;
-                if (currentVario >= 5.0f) {
-                    increasing = false;
-                    currentVario = 5.0f;
-                }
-            } else {
-                currentVario -= 0.5f;
-                if (currentVario <= -3.0f) {
-                    increasing = true;
-                    currentVario = -3.0f;
-                }
-            }
-        });
+        //     // Adjust vario value
+        //     if (increasing) {
+        //         currentVario += 0.5f;
+        //         if (currentVario >= 10.0f) {
+        //             increasing = false;
+        //             currentVario = 10.0f;
+        //         }
+        //     } else {
+        //         currentVario -= 0.5f;
+        //         if (currentVario <= -5.0f) {
+        //             increasing = true;
+        //             currentVario = -5.0f;
+        //         }
+        //     }
+        // });
 
-        simTimer->start(1000);
+        // simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -271,8 +271,6 @@ void MainWindow::configureDisplayStyles()
 {
     QScreen *screen = QGuiApplication::primaryScreen();
     int screenWidth = screen->geometry().width();
-
-    screenWidth = screenWidth / 5;
 
     // Calculate font sizes based on screen width
     int primaryFontSize = screenWidth * 0.12;    // Primary displays
