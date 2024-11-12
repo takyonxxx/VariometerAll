@@ -21,7 +21,7 @@
 #include "sensormanager.h"
 #include "readgps.h"
 #include "kalmanfilter.h"
-#include "beepthread.h"
+#include "variosound.h"
 
 // Constants for atmospheric calculations
 #define SEA_LEVEL_PRESSURE 101325.0f        // Standard sea level pressure in Pascals
@@ -101,9 +101,9 @@ private:
     QPushButton *pushExit;
 
     // Device managers
-    SensorManager* sensorManager{nullptr};    // Pressure and temperature sensor manager
+    SensorManager* sensorManager{nullptr};   // Pressure and temperature sensor manager
     ReadGps* readGps{nullptr};               // GPS data manager    
-    BeepThread* beepThread{nullptr};         // Audio feedback manager
+    VarioSound* varioSound{nullptr};         // Audio feedback manager
 
     // Kalman filters
     std::shared_ptr<KalmanFilter> pressure_filter;    // Filter for pressure readings

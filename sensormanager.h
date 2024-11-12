@@ -26,7 +26,7 @@ public:
     void startSensors();
     void readSensorValues();
 
-    void setStop(bool newStop);
+    void setStop();
 
 private:
     QSensor *sensorPressure;

@@ -80,10 +80,11 @@ MainWindow::MainWindow(QWidget *parent)
         initializeFilters();
         initializeSensors();
 
-        beepThread = new BeepThread(this);
-        beepThread->setVolume(100.);
-        beepThread->startBeep();
-        beepThread->start();
+        VarioSound* varioSound = new VarioSound(this);
+        varioSound->start();
+
+        // Test with some values
+        varioSound->updateVario(1.0);  // Should trigger climb tone
 
         // QTimer *simTimer = new QTimer(this);
         // float currentVario = 0.0f;
@@ -93,8 +94,8 @@ MainWindow::MainWindow(QWidget *parent)
         // // Connect timer to lambda function that updates vario values
         // connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
         //     // Update vario with current value
-        //     if(beepThread)
-        //         beepThread->SetVario(currentVario, p_dt);
+        //     if(varioBeep)
+        //         varioBeep->setVario(currentVario, p_dt);
 
         //     // Adjust vario value
         //     if (increasing) {
@@ -279,6 +280,8 @@ void MainWindow::configureDisplayStyles()
 {
     QScreen *screen = QGuiApplication::primaryScreen();
     int screenWidth = screen->geometry().width();
+
+    screenWidth = screenWidth / 5;
 
     // Calculate font sizes based on screen width
     int primaryFontSize = screenWidth * 0.12;    // Primary displays
@@ -553,8 +556,8 @@ void MainWindow::updatePressureAndAltitude()
     // Calculate vertical speed
     vario = altitude_filter->GetXVel();
 
-    if(beepThread)
-        beepThread->SetVario(vario, p_dt);
+    if(varioSound)
+        varioSound->updateVario(vario);
 
     updateDisplays();
     p_start = p_end;
@@ -632,23 +635,32 @@ void MainWindow::pushReset_clicked()
 }
 
 void MainWindow::pushExit_clicked()
-{   
-    if (beepThread) {
-        beepThread->stopBeep();
-    }
+{
+    // if (sensorManager) {
+    //     sensorManager->setStop();
+    //     sensorManager->quit();
+    //     sensorManager->wait();
+    //     delete sensorManager;
+    // }
 
-    if (sensorManager) {
-        sensorManager->setStop(true);
-    }
+    // if (readGps) {
+    //     delete readGps;
+    // }
 
-    QThread::msleep(100);
+    // if (varioSound) {
+    //     varioSound->setStop();
+    //     varioSound->quit();
+    //     varioSound->wait();
+    //     delete varioSound;
+    // }
+
     QCoreApplication::exit(0);
 }
 
 MainWindow::~MainWindow()
 {
-    // Clean shutdown of threads and resources
     if (sensorManager) {
+        sensorManager->setStop();
         sensorManager->quit();
         sensorManager->wait();
         delete sensorManager;
@@ -656,10 +668,13 @@ MainWindow::~MainWindow()
 
     if (readGps) {
         delete readGps;
-    }    
+    }
 
-    if (beepThread) {
-        delete beepThread;
+    if (varioSound) {
+        varioSound->setStop();
+        varioSound->quit();
+        varioSound->wait();
+        delete varioSound;
     }
 
     delete ui;

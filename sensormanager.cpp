@@ -71,9 +71,9 @@ void SensorManager::readSensorValues()
     emit sendInfo(readPressure());
 }
 
-void SensorManager::setStop(bool newStop)
+void SensorManager::setStop()
 {
-    m_stop = newStop;
+    m_stop = true;
 }
 
 void SensorManager::run()
