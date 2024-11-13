@@ -15,7 +15,7 @@ VarioSound::VarioSound(QObject *parent)
     m_currentVario = 0.0;
     m_currentPlaybackRate = 1.0;
     m_currentVolume = 1.0;
-    m_duration = 600;
+    m_duration = 300;
     m_frequency = 600;
 }
 
@@ -89,8 +89,17 @@ void VarioSound::calculateSoundCharacteristics()
     m_frequency = 2.94269*m_currentVario*m_currentVario*m_currentVario - 71.112246*m_currentVario*m_currentVario +
                       614.136517*m_currentVario + 30.845693;
 
+    if(m_frequency > 1800)
+        m_frequency = 1800;
+
+    if(m_frequency < 300)
+        m_frequency = 300;
+
     // Calculate duration
-    m_duration = -38.00*m_currentVario + 400.00; // Variable Pause
+    m_duration = -38.00*m_currentVario + 300.00; // Variable Pause
+
+    if(m_duration < 60)
+        m_duration = 60;
 
     m_frequency = int(m_frequency);
     m_duration = long(m_duration);
@@ -186,9 +195,9 @@ void VarioSound::run()
     while (!m_stop)
     {
         playSound();
-        msleep(m_duration > 0 ? m_duration : 400);
+        msleep(static_cast<int>(m_duration));
         stopSound();
-        msleep(m_duration > 0 ? m_duration : 400);
+        msleep(static_cast<int>(m_duration / 2.0));
     }
 
     delete m_mediaPlayer;

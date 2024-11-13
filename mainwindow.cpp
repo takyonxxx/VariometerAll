@@ -272,6 +272,10 @@ void MainWindow::configureDisplayStyles()
     QScreen *screen = QGuiApplication::primaryScreen();
     int screenWidth = screen->geometry().width();
 
+#ifdef Q_OS_WIN32
+    screenWidth = screenWidth / 5;
+#endif
+
     // Calculate font sizes based on screen width
     int primaryFontSize = screenWidth * 0.12;    // Primary displays
     int secondaryFontSize = screenWidth * 0.08;  // Secondary displays
@@ -580,8 +584,10 @@ void MainWindow::sliderMeasurement_valueChanged(int value)
 {
     if (value == 0) return;
 
-    measurementVariance = static_cast<qreal>(value) / 100.0;
+    measurementVariance = static_cast<qreal>(value) / 10.0;
     updateVarianceDisplays();
+    if(varioSound)
+        varioSound->updateVario(measurementVariance);
 }
 
 void MainWindow::sliderAccel_valueChanged(int value)
