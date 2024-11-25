@@ -196,24 +196,64 @@ void MainWindow::initializeUI()
 void MainWindow::setupUi()
 {
     auto centralWidget = new QWidget(this);
+    centralWidget->setStyleSheet(R"(
+       background-color: #0C1824;
+       background-image: linear-gradient(rgba(0, 255, 0, 0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0, 255, 0, 0.03) 1px, transparent 1px);
+   )");
     setCentralWidget(centralWidget);
+
+    setMenuBar(nullptr);
+    setStatusBar(nullptr);
+
     gridLayout = new QGridLayout(centralWidget);
     gridLayout->setSpacing(10);
     gridLayout->setContentsMargins(5, 5, 5, 5);
 
-    // Create widgets
+    QString labelStyle = R"(
+       color: #00FF00;
+       font-family: 'Consolas';
+       font-size: 18px;
+       border: 1px solid #1E3F66;
+       border-radius: 3px;
+       padding: 12px;
+       background-color: rgba(22, 39, 54, 0.95);
+       box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+   )";
+
     hsiWidget = new HSIWidget(this);
     hsiWidget->setMinimumHeight(400);
     hsiWidget->setThickness(0.08f);
     hsiWidget->setHeadingTextOffset(0.4f);
+    hsiWidget->setStyleSheet("background: rgba(22, 39, 54, 0.95);");
 
     label_vario = new QLabel("0.0 m/s", this);
     label_altitude = new QLabel("0.0 m", this);
     label_speed = new QLabel("0 km/s", this);
     label_pressure = new QLabel("0.0 kPa", this);
-    pushExit = new QPushButton("EXIT", this);
 
-    // Add widgets to grid layout
+    for(auto* label : {label_vario, label_altitude, label_speed, label_pressure}) {
+        label->setStyleSheet(labelStyle);
+        label->setFont(QFont("Consolas", 12));
+    }
+
+    pushExit = new QPushButton("EXIT", this);
+    pushExit->setStyleSheet(R"(
+       QPushButton {
+           color: #FFFFFF;
+           background-color: #2a3f5f;
+           font-family: 'Consolas';
+           font-size: 30px;
+           font-weight: bold;
+           padding: 10px;
+           border-radius: 5px;
+       }
+       QPushButton:hover {
+           background-color: #FF0000;
+           color: #0C1824;
+       }
+   )");
+
     int row = 0;
     gridLayout->addWidget(hsiWidget, row++, 0, 1, 3);
     gridLayout->addWidget(label_vario, row++, 0, 1, 3);
@@ -221,10 +261,8 @@ void MainWindow::setupUi()
     gridLayout->addWidget(label_speed, row++, 0, 1, 3);
     gridLayout->addWidget(label_pressure, row++, 0, 1, 3);
     gridLayout->addWidget(pushExit, row++, 0, 1, 3);
-
-    // Set stretch factors
-    gridLayout->setRowStretch(0, 1);  // HSI gets more vertical space
-    gridLayout->setRowStretch(row, 1); // Add some stretch at the bottom
+    gridLayout->setRowStretch(0, 1);
+    gridLayout->setRowStretch(row, 1);
     connect(pushExit, &QPushButton::clicked, this, &MainWindow::handleExit);
 }
 
