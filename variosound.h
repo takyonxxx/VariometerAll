@@ -1,53 +1,49 @@
 #ifndef VARIOSOUND_H
 #define VARIOSOUND_H
 
-#include <QThread>
-#include <QMediaPlayer>
+#include <QObject>
 #include <QAudioOutput>
-#include <QAudioFormat>
-#include <QDebug>
-#include <QFile>
+#include <QMediaDevices>
+#include <QAudioSink>
 #include <QTimer>
-#include <QPointer>
+#include <QBuffer>
+#include <memory>
 
-class VarioSound : public QThread
-{
+class VarioSound : public QObject {
     Q_OBJECT
-
 public:
     explicit VarioSound(QObject *parent = nullptr);
     ~VarioSound();
 
-    void setStop();
+    void start();
+    void stop();
     void updateVario(qreal vario);
 
-protected:
-    void run() override;
-
 private slots:
-    void handlePlaybackStateChanged(QMediaPlayer::PlaybackState state);
-    void handleMediaStatusChanged(QMediaPlayer::MediaStatus status);
-    void handleErrorOccurred(QMediaPlayer::Error error, const QString &errorString);
+    void handleAudioStateChanged(QAudio::State state);
+    void generateNextBuffer();
 
 private:
+    void initializeAudio();
+    void generateTone(float frequency, int durationMs);
     void calculateSoundCharacteristics();
-    void playSound();
-    void stopSound();
-    bool initializeAudio();
 
-    QPointer<QMediaPlayer> m_mediaPlayer;
-    QPointer<QAudioOutput> m_audioOutput;
+    std::unique_ptr<QAudioSink> m_audioSink;
+    QByteArray m_audioData;
+    QBuffer m_audioBuffer;
+    QTimer m_toneTimer;
 
-    float m_climbToneOnThreshold;
-    float m_sinkToneOnThreshold;
+    float m_climbToneOnThreshold{0.2f};
+    float m_sinkToneOnThreshold{-2.0f};
+    qreal m_currentVario{0.0};
+    float m_currentVolume{1.0};
+    int m_duration{300};
+    float m_frequency{600.0f};
+    bool m_isRunning{false};
 
-    qreal m_currentVario;
-    float m_currentPlaybackRate;
-    float m_currentVolume;
-    long m_duration;
-    long m_frequency;
-    bool m_stop;
-    bool m_mediaLoaded;
+    static constexpr int SAMPLE_RATE = 44100;
+    static constexpr int CHANNELS = 1;
+    static constexpr int SAMPLE_SIZE = 16;
 };
 
 #endif // VARIOSOUND_H

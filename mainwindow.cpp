@@ -129,39 +129,42 @@ MainWindow::MainWindow(QWidget *parent)
         initializeFilters();
         initializeSensors();
 
-        // varioSound = new VarioSound(this);
-        // varioSound->start();
+        varioSound = new VarioSound(this);
+        varioSound->start();
 
-        /*QTimer *simTimer = new QTimer(this);
-        float currentVario = 0.0f;
-        bool increasing = true;
+        // QTimer *simTimer = new QTimer(this);
+        // float currentVario = 0.0f;
+        // bool increasing = true;
 
-        connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
-            // Calculate vertical speed
-            vario = currentVario;
+        // connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
+        //     // Calculate vertical speed
+        //     vario = currentVario;
 
-            if(varioSound)
-                varioSound->updateVario(vario);
+        //     if(varioSound)
+        //         varioSound->updateVario(vario);
 
-            updateDisplays();
+        //     if(hsiWidget)
+        //         hsiWidget->setVerticalSpeed(vario);
 
-            // Adjust vario value
-            if (increasing) {
-                currentVario += 0.1f;
-                if (currentVario >= 5.0f) {
-                    increasing = false;
-                    currentVario = 5.0f;
-                }
-            } else {
-                currentVario -= 0.1f;
-                if (currentVario <= -5.0f) {
-                    increasing = true;
-                    currentVario = -5.0f;
-                }
-            }
-        });
+        //     updateDisplays();
 
-        simTimer->start(1000);*/
+        //     // Adjust vario value
+        //     if (increasing) {
+        //         currentVario += 0.25f;
+        //         if (currentVario >= 5.0f) {
+        //             increasing = false;
+        //             currentVario = 5.0f;
+        //         }
+        //     } else {
+        //         currentVario -= 0.25f;
+        //         if (currentVario <= -5.0f) {
+        //             increasing = true;
+        //             currentVario = -5.0f;
+        //         }
+        //     }
+        // });
+
+        // simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -377,8 +380,8 @@ void MainWindow::updatePressureAndAltitude()
     vario = altitude_filter->GetXVel();
     hsiWidget->setVerticalSpeed(vario);
 
-    // if(varioSound)
-    //     varioSound->updateVario(vario);
+    if(varioSound)
+        varioSound->updateVario(vario);
 
     updateDisplays();
     p_start = p_end;
@@ -476,9 +479,7 @@ MainWindow::~MainWindow()
     }
 
     if (varioSound) {
-        varioSound->setStop();
-        varioSound->quit();
-        varioSound->wait();
+        varioSound->stop();
         delete varioSound;
     }
 
