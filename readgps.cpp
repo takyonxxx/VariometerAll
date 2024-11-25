@@ -82,6 +82,12 @@ QList<qreal> ReadGps::captureGpsData()
     }
 
     temp.append(positionInfo.coordinate().altitude());
+
+    qreal heading = positionInfo.hasAttribute(QGeoPositionInfo::Direction)
+                        ? positionInfo.attribute(QGeoPositionInfo::Direction)
+                        : 0.0;
+    temp.append(heading);
+
     temp.append(positionInfo.coordinate().latitude());
     temp.append(positionInfo.coordinate().longitude());
 

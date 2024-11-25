@@ -121,13 +121,13 @@ void VarioSound::calculateSoundCharacteristics()
         m_duration = 0;
     }
 
-    // Debug output
-    qDebug() << "Sound characteristics calculated:"
-             << "\n  Vario:" << m_currentVario
-             << "\n  Frequency:" << m_frequency
-             << "\n  Duration:" << m_duration
-             << "\n  Playback Rate:" << m_currentPlaybackRate
-             << "\n  Volume:" << m_currentVolume;
+    // // Debug output
+    // qDebug() << "Sound characteristics calculated:"
+    //          << "\n  Vario:" << m_currentVario
+    //          << "\n  Frequency:" << m_frequency
+    //          << "\n  Duration:" << m_duration
+    //          << "\n  Playback Rate:" << m_currentPlaybackRate
+    //          << "\n  Volume:" << m_currentVolume;
 }
 
 void VarioSound::stopSound()

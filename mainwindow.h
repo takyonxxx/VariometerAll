@@ -22,6 +22,7 @@
 #include "readgps.h"
 #include "kalmanfilter.h"
 #include "variosound.h"
+#include "hsiwidget.h"
 
 // Constants for atmospheric calculations
 #define SEA_LEVEL_PRESSURE 101325.0f        // Standard sea level pressure in Pascals
@@ -57,22 +58,21 @@ public:
 private slots:
 
     void pushExit_clicked();
-    void sliderMeasurement_valueChanged(int value);
-    void sliderAccel_valueChanged(int value);
-    void pushReset_clicked();
+    void getGpsInfo(QList<qreal> info);
+    void getPressureInfo(QList<qreal> info);
+    void getAccInfo(QList<qreal> info);
+    void getGyroInfo(QList<qreal> info);
+    void getCompassInfo(QList<qreal> info);
 
 private:
     void initializeUI();
     void configureDisplayStyles();
-    void configureScrollBars();
     void initializeFilters();
     void initializeSensors();
-    void processSensorData(const QList<qreal>& info);
+    void processPressureData(const QList<qreal>& info);
     void updatePressureAndAltitude();
-    void updateDisplays();
-    void updateVarianceDisplays();
-    void getSensorInfo(QList<qreal> info);
-    void getGpsInfo(QList<qreal> info);
+    void updateDisplays();    
+
     void printInfo(QString info);
 #ifdef Q_OS_ANDROID
     void requestAndroidPermissions();
@@ -83,22 +83,13 @@ private:
     QWidget *centralwidget;
     QGridLayout *gridLayout_2;
     QGridLayout *gridLayout;
-    QLabel *labelMV;
-    QSlider *sliderAccel;
-    QSlider *sliderMeasurement;
-    QLabel *labelAV;
-    QLabel *labelM;
-    QLabel *labelA;
-    QLabel *labelSensor;
     QLabel *label_pressure;
-    QLabel *label_baro_altitude;
-    QLabel *labelGps;
-    QLabel *label_gps_altitude;
+    QLabel *label_altitude;
     QLabel *label_speed;
-    QTextBrowser *m_textStatus;
     QLabel *label_vario;
-    QPushButton *pushReset;
     QPushButton *pushExit;
+
+    HSICompassWidget *hsiWidget{nullptr};
 
     // Device managers
     SensorManager* sensorManager{nullptr};   // Pressure and temperature sensor manager
@@ -132,6 +123,9 @@ private:
     qreal altitude{0.0};                    // GPS altitude in meters
     qreal baroaltitude{0.0};               // Barometric altitude in meters
     qreal vario{0.0};                      // Vertical speed in m/s
+    qreal m_roll = 0.0;
+    qreal m_pitch = 0.0;
+    qreal m_heading = 0.0;
 
     // Control flags
     bool stopReading{false};                // Flag to control sensor reading
