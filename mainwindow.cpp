@@ -13,6 +13,7 @@ const QString BACKGROUND = "#2a3f5f;";
 
 #ifdef Q_OS_IOS
 #include "LocationPermission.h"
+#import <UIKit/UIKit.h>
 #endif
 
 #ifdef Q_OS_ANDROID
@@ -48,8 +49,61 @@ void MainWindow::requestAndroidPermissions()
         }
     }
 }
-#endif
 
+void MainWindow::setupAndroidFlags()
+{
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    activity = QJniObject::callStaticObjectMethod(
+        "org/qtproject/qt/android/QtNative",
+        "activity",
+        "()Landroid/app/Activity;");
+
+    if (activity.isValid()) {
+        QJniObject window = activity.callObjectMethod(
+            "getWindow",
+            "()Landroid/view/Window;");
+
+        if (window.isValid()) {
+            const int FLAG_KEEP_SCREEN_ON = 128;
+            window.callMethod<void>(
+                "addFlags",
+                "(I)V",
+                FLAG_KEEP_SCREEN_ON);
+        }
+    }
+}
+
+void MainWindow::keepScreenOn()
+{
+    // Android'de WakeLock kullanımı
+    QJniEnvironment env;
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
+    QJniObject context = activity.callObjectMethod(
+        "getApplicationContext",
+        "()Landroid/content/Context;");
+
+    QJniObject powerManager = context.callObjectMethod(
+        "getSystemService",
+        "(Ljava/lang/String;)Ljava/lang/Object;",
+        QJniObject::fromString("power").object());
+
+    if (powerManager.isValid()) {
+        const int SCREEN_BRIGHT_WAKE_LOCK = 10;
+        const int ON_AFTER_RELEASE = 0x20000000;
+
+        QJniObject wakeLock = powerManager.callObjectMethod(
+            "newWakeLock",
+            "(ILjava/lang/String;)Landroid/os/PowerManager$WakeLock;",
+            SCREEN_BRIGHT_WAKE_LOCK | ON_AFTER_RELEASE,
+            QJniObject::fromString("MyApp::WakeLock").object());
+
+        if (wakeLock.isValid()) {
+            wakeLock.callMethod<void>("acquire");
+        }
+    }
+}
+
+#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)    
@@ -63,17 +117,20 @@ MainWindow::MainWindow(QWidget *parent)
 
 #ifdef Q_OS_ANDROID
         requestAndroidPermissions();
+        setupAndroidFlags();
+        keepScreenOn();
 #endif
 
 #ifdef Q_OS_IOS
         requestIOSLocationPermission();
+        [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
 #endif
 
         initializeFilters();
         initializeSensors();
 
-        varioSound = new VarioSound(this);
-        varioSound->start();
+        // varioSound = new VarioSound(this);
+        // varioSound->start();
 
         /*QTimer *simTimer = new QTimer(this);
         float currentVario = 0.0f;
@@ -182,6 +239,7 @@ void MainWindow::setupStyles()
             padding: 10px;
             background-color: #2d2d2d;
             border-radius: 5px;
+            qproperty-alignment: AlignCenter;    /* Centers text horizontally and vertically */
         }
         QPushButton {
             background-color: #2a3f5f;
@@ -191,32 +249,37 @@ void MainWindow::setupStyles()
             padding: 10px;
             border-radius: 5px;
             border: none;
+            text-align: center;                  /* Centers button text */
         }
         QPushButton:hover {
             background-color: #ff0000;
         }
     )";
 
+    // For the vario label with dynamic color
     QString varioColor = vario < 0 ? DisplayColors::DISPLAY_NEGATIVE : DisplayColors::DISPLAY_POSITIVE;
-
-    QString varioStyle = QString("font-size: 48pt; color: %1; background-color: %2; "
-                                 "font-weight: bold; border: 1px solid #333333; "
-                                 "padding: 5px; margin: 2px; border-radius: 5px; "
-                                 "font-family: 'Digital-7', 'Segment7', monospace;")
+    QString varioStyle = QString("font-size: 48pt; "
+                                 "color: %1; "
+                                 "background-color: %2; "
+                                 "font-weight: bold; "
+                                 "border: 1px solid #333333; "
+                                 "padding: 5px; "
+                                 "margin: 2px; "
+                                 "border-radius: 5px; "
+                                 "font-family: 'Digital-7', 'Segment7', monospace; "
+                                 "qproperty-alignment: AlignCenter;")  // Centers vario text
                              .arg(varioColor)
                              .arg(DisplayColors::BACKGROUND);
 
+    // Apply styles
+    setStyleSheet(baseStyle);
     label_vario->setStyleSheet(varioStyle);
 
-    setStyleSheet(baseStyle);
-
-    // label_altitude->setStyleSheet("background-color: #5c4033;");   // Brown theme
-    // label_speed->setStyleSheet("background-color: #2a3f5f;");     // Blue theme
-    // label_pressure->setStyleSheet("background-color: #4a235a;");  // Purple theme
-
-    label_altitude->setStyleSheet("background-color: #5c4033;");   // Brown theme
-    label_speed->setStyleSheet("background-color: #5c4033;");     // Blue theme
-    label_pressure->setStyleSheet("background-color: #5c4033;");  // Purple theme
+    // Additional label styles with centering
+    QString commonLabelStyle = "background-color: #5c4033; qproperty-alignment: AlignCenter;";
+    label_altitude->setStyleSheet(commonLabelStyle);
+    label_speed->setStyleSheet(commonLabelStyle);
+    label_pressure->setStyleSheet(commonLabelStyle);
 }
 
 void MainWindow::updateDisplays()
@@ -224,13 +287,19 @@ void MainWindow::updateDisplays()
     // Update vario display with color coding
     QString varioString = QString::number(qAbs(vario), 'f', 1) + " m/s";
     QString varioColor = vario < 0 ? DisplayColors::DISPLAY_NEGATIVE : DisplayColors::DISPLAY_POSITIVE;
-
-    QString varioStyle = QString("font-size: 48pt; color: %1; background-color: %2; "
-                                 "font-weight: bold; border: 1px solid #333333; "
-                                 "padding: 5px; margin: 2px; border-radius: 5px; "
-                                 "font-family: 'Digital-7', 'Segment7', monospace;")
+    QString varioStyle = QString("font-size: 48pt; "
+                                 "color: %1; "
+                                 "background-color: %2; "
+                                 "font-weight: bold; "
+                                 "border: 1px solid #333333; "
+                                 "padding: 5px; "
+                                 "margin: 2px; "
+                                 "border-radius: 5px; "
+                                 "font-family: 'Digital-7', 'Segment7', monospace; "
+                                 "qproperty-alignment: AlignCenter;")  // Centers vario text
                              .arg(varioColor)
                              .arg(DisplayColors::BACKGROUND);
+
 
     label_vario->setStyleSheet(varioStyle);
     label_vario->setText(varioString);
@@ -308,8 +377,8 @@ void MainWindow::updatePressureAndAltitude()
     vario = altitude_filter->GetXVel();
     hsiWidget->setVerticalSpeed(vario);
 
-    if(varioSound)
-        varioSound->updateVario(vario);
+    // if(varioSound)
+    //     varioSound->updateVario(vario);
 
     updateDisplays();
     p_start = p_end;

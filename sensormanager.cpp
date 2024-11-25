@@ -93,25 +93,25 @@ void SensorManager::startSensors()
         qDebug() << "QAccelerometer not found in SensorList.";
     }
 
-    if (hasGyroscopeSensor) {
-        sensorGyro = new QGyroscope(this);
-        if (sensorGyro->start())
-            qDebug() << "QGyroscope started.";
-        else
-            qDebug() << "Failed to start QGyroscope.";
-    } else {
-        qDebug() << "QGyroscope not found in SensorList.";
-    }
+    // if (hasGyroscopeSensor) {
+    //     sensorGyro = new QGyroscope(this);
+    //     if (sensorGyro->start())
+    //         qDebug() << "QGyroscope started.";
+    //     else
+    //         qDebug() << "Failed to start QGyroscope.";
+    // } else {
+    //     qDebug() << "QGyroscope not found in SensorList.";
+    // }
 
-    if (hasCompassSensor) {
-        sensorCompass = new QCompass(this);
-        if (sensorCompass->start())
-            qDebug() << "QCompass started.";
-        else
-            qDebug() << "Failed to start QCompass.";
-    } else {
-        qDebug() << "QCompass not found in SensorList.";
-    }
+    // if (hasCompassSensor) {
+    //     sensorCompass = new QCompass(this);
+    //     if (sensorCompass->start())
+    //         qDebug() << "QCompass started.";
+    //     else
+    //         qDebug() << "Failed to start QCompass.";
+    // } else {
+    //     qDebug() << "QCompass not found in SensorList.";
+    // }
 }
 
 void SensorManager::readSensorValues()
@@ -119,8 +119,8 @@ void SensorManager::readSensorValues()
     processAccelerometerData();
     emit sendPressureInfo(readPressure());
     emit sendAccInfo(readAcc());
-    emit sendGyroInfo(readGyro());
-    emit sendCompassInfo(readCompass());
+    // emit sendGyroInfo(readGyro());
+    // emit sendCompassInfo(readCompass());
 }
 
 void SensorManager::setStop()
@@ -138,8 +138,6 @@ void SensorManager::run()
         processAccelerometerData();
         emit sendPressureInfo(readPressure());
         emit sendAccInfo(readAcc());
-        //emit sendGyroInfo(readGyro());
-        //emit sendCompassInfo(readCompass());
         msleep(250);
     }
 }

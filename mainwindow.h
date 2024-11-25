@@ -76,6 +76,8 @@ private:
     void printInfo(QString info);
 #ifdef Q_OS_ANDROID
     void requestAndroidPermissions();
+    void keepScreenOn();
+    void setupAndroidFlags();
 #endif
 
     void setupUi();
