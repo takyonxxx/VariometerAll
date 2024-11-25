@@ -6,19 +6,9 @@
 
 // Color constants for avionic display
 namespace DisplayColors {
-const QString DISPLAY_POSITIVE = "#00FF3B";  // Aviation green (daha parlak yeşil)
+const QString DISPLAY_POSITIVE = "#FFFFFF";  // Aviation green (daha parlak yeşil)
 const QString DISPLAY_NEGATIVE = "#FF1414";  // Aviation red (daha parlak kırmızı)
-const QString DISPLAY_NEUTRAL = "#14FFFF";   // EFIS cyan (daha parlak cyan)
-const QString BACKGROUND = "#0c677a";
-const QString TEXT_LIGHT = "#EFFFFF";        // EFIS white (hafif cyan'lı beyaz)
-const QString BUTTBLUE = "#0066FF";       // Aviation blue (daha parlak mavi)
-const QString WARNING_RED = "#FF4400";       // Amber warning (turuncu-kırmızı)
-
-// İkincil renkler (gerekirse kullanmak için)
-const QString CAUTIAMBER = "#FFBF00";     // Amber (dikkat rengi)
-const QString STATUS_GREEN = "#00FF44";      // Status OK yeşili
-const QString ADVISORY_BLUE = "#00FFFF";     // Advisory mavi
-const QString TERRAIN_BROWN = "#CD661D";     // Terrain uyarı rengi
+const QString BACKGROUND = "#2a3f5f;";
 }
 
 #ifdef Q_OS_IOS
@@ -127,124 +117,112 @@ void MainWindow::initializeUI()
     ui->setupUi(this);
 
     setupUi();
+    setupStyles();
 
-    connect(pushExit, &QPushButton::clicked,
-            this, &MainWindow::pushExit_clicked);
+    // Set window properties
+    setWindowTitle("Variometer");
+    setWindowFlags(Qt::FramelessWindowHint); // Optional: for fullscreen avionics
 
-
-    // Configure avionic-style display elements
-    configureDisplayStyles();
+    // Center and size the window
+    // QScreen *screen = QGuiApplication::primaryScreen();
+    // QRect screenGeometry = screen->geometry();
+    // int width = screenGeometry.width() * 0.8;  // 80% of screen width
+    // int height = screenGeometry.height() * 0.8; // 80% of screen height
+    // setGeometry((screenGeometry.width() - width) / 2,
+    //             (screenGeometry.height() - height) / 2,
+    //             width, height);
 }
 
 void MainWindow::setupUi()
 {
-    // Set main window properties
-    if (objectName().isEmpty())
-        setObjectName("MainWindow");
-
-    // Create central widget
-    centralwidget = new QWidget(this);
-    centralwidget->setObjectName("centralwidget");
-    setCentralWidget(centralwidget);
-
-    // Create main grid layout
-    QGridLayout* gridLayout = new QGridLayout(centralwidget);
+    auto centralWidget = new QWidget(this);
+    setCentralWidget(centralWidget);
+    gridLayout = new QGridLayout(centralWidget);
+    gridLayout->setSpacing(10);
     gridLayout->setContentsMargins(5, 5, 5, 5);
-    gridLayout->setSpacing(3);
 
-    // Create and setup HSI widget
-    hsiWidget = new HSICompassWidget(centralwidget);
+    // Create widgets
+    hsiWidget = new HSIWidget(this);
+    hsiWidget->setMinimumHeight(400);
     hsiWidget->setThickness(0.08f);
     hsiWidget->setHeadingTextOffset(0.4f);
-    hsiWidget->setMinimumHeight(400);
-    hsiWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-    // Create labels with smaller font
-    label_vario = new QLabel(centralwidget);
-    label_vario->setObjectName("label_vario");
-    label_vario->setAlignment(Qt::AlignCenter);
-    label_vario->setText("- m/s");
-
-    label_pressure = new QLabel(centralwidget);
-    label_pressure->setObjectName("label_pressure");
-    label_pressure->setAlignment(Qt::AlignCenter);
-    label_pressure->setText("-");
-
-    label_altitude = new QLabel(centralwidget);
-    label_altitude->setObjectName("label_baro_altitude");
-    label_altitude->setAlignment(Qt::AlignCenter);
-    label_altitude->setText("-");
-
-    label_speed = new QLabel(centralwidget);
-    label_speed->setObjectName("label_speed");
-    label_speed->setAlignment(Qt::AlignCenter);
-    label_speed->setText("-");
-
-    pushExit = new QPushButton(centralwidget);
-    pushExit->setObjectName("pushExit");
-    pushExit->setText("Exit");
-    pushExit->setFixedHeight(35);
+    label_vario = new QLabel("0.0 m/s", this);
+    label_altitude = new QLabel("0.0 m", this);
+    label_speed = new QLabel("0 km/s", this);
+    label_pressure = new QLabel("0.0 kPa", this);
+    pushExit = new QPushButton("EXIT", this);
 
     // Add widgets to grid layout
     int row = 0;
-
-    // HSI Widget at top
     gridLayout->addWidget(hsiWidget, row++, 0, 1, 3);
-
-    // Add the remaining widgets in order
-    gridLayout->addWidget(label_vario, row++, 0, 1, 3);    
+    gridLayout->addWidget(label_vario, row++, 0, 1, 3);
     gridLayout->addWidget(label_altitude, row++, 0, 1, 3);
     gridLayout->addWidget(label_speed, row++, 0, 1, 3);
     gridLayout->addWidget(label_pressure, row++, 0, 1, 3);
     gridLayout->addWidget(pushExit, row++, 0, 1, 3);
 
     // Set stretch factors
-    gridLayout->setRowStretch(0, 2);  // HSI gets more vertical space
+    gridLayout->setRowStretch(0, 1);  // HSI gets more vertical space
     gridLayout->setRowStretch(row, 1); // Add some stretch at the bottom
-
-    setWindowTitle("Variometer");
+    connect(pushExit, &QPushButton::clicked, this, &MainWindow::handleExit);
 }
 
-void MainWindow::configureDisplayStyles()
+void MainWindow::setupStyles()
 {
-    QScreen *screen = QGuiApplication::primaryScreen();
-    int screenWidth = screen->geometry().width();
+    // Set dark theme colors
+    QString baseStyle = R"(
+        QMainWindow {
+            background-color: #1a1a1a;
+        }
+        QLabel {
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #2d2d2d;
+            border-radius: 5px;
+        }
+        QPushButton {
+            background-color: #2a3f5f;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+        QPushButton:hover {
+            background-color: #ff0000;
+        }
+    )";
 
-#ifdef Q_OS_WIN32
-    screenWidth = screenWidth / 5;
-#endif
+    QString varioColor = vario < 0 ? DisplayColors::DISPLAY_NEGATIVE : DisplayColors::DISPLAY_POSITIVE;
 
-    // Calculate font sizes based on screen width
-    int primaryFontSize = screenWidth * 0.1;    // Primary displays
+    QString varioStyle = QString("font-size: 48pt; color: %1; background-color: %2; "
+                                 "font-weight: bold; border: 1px solid #333333; "
+                                 "padding: 5px; margin: 2px; border-radius: 5px; "
+                                 "font-family: 'Digital-7', 'Segment7', monospace;")
+                             .arg(varioColor)
+                             .arg(DisplayColors::BACKGROUND);
 
-    // Common background and border styles
-    QString commonBackground = QString("background-color: %1; border: 1px solid #333333;")
-                                   .arg(DisplayColors::BACKGROUND);
+    label_vario->setStyleSheet(varioStyle);
 
-    // Common padding and margin - adjusted for screen size
-    QString commonPadding = QString("padding: %1px; margin: %2px;")
-                                .arg(screenWidth * 0.01)
-                                .arg(screenWidth * 0.005);
+    setStyleSheet(baseStyle);
 
-    // Primary Display (Vario)
-    QString primaryStyle = QString("font-size: %1px; color: %2; %3 %4 border-radius: 5px; font-family: 'Digital-7', 'Segment7', monospace; font-weight: bold;")
-                                      .arg(primaryFontSize)
-                                      .arg(DisplayColors::DISPLAY_NEUTRAL)
-                                      .arg(commonBackground)
-                                      .arg(commonPadding);
+    // label_altitude->setStyleSheet("background-color: #5c4033;");   // Brown theme
+    // label_speed->setStyleSheet("background-color: #2a3f5f;");     // Blue theme
+    // label_pressure->setStyleSheet("background-color: #4a235a;");  // Purple theme
 
-    label_vario->setStyleSheet(primaryStyle);
-    label_pressure->setStyleSheet(primaryStyle);
-    label_altitude->setStyleSheet(primaryStyle);
-    label_speed->setStyleSheet(primaryStyle);
-    pushExit->setStyleSheet(primaryStyle);
-    pushExit->setMinimumHeight(50);
+    label_altitude->setStyleSheet("background-color: #5c4033;");   // Brown theme
+    label_speed->setStyleSheet("background-color: #5c4033;");     // Blue theme
+    label_pressure->setStyleSheet("background-color: #5c4033;");  // Purple theme
 }
 
 void MainWindow::updateDisplays()
 {
     // Update vario display with color coding
-    QString varioString = QString::number(qAbs(vario), 'f', 2) + " m/s";
+    QString varioString = QString::number(qAbs(vario), 'f', 1) + " m/s";
     QString varioColor = vario < 0 ? DisplayColors::DISPLAY_NEGATIVE : DisplayColors::DISPLAY_POSITIVE;
 
     QString varioStyle = QString("font-size: 48pt; color: %1; background-color: %2; "
@@ -259,7 +237,7 @@ void MainWindow::updateDisplays()
 
     // Format numbers with consistent decimal places
     label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
-    label_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 0)));
+    label_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 1)));
 }
 
 void MainWindow::initializeFilters()
@@ -386,7 +364,7 @@ void MainWindow::getAccInfo(QList<qreal> info)
     }
 
     m_roll = info.at(0);
-    m_pitch = info.at(1) - 45;
+    m_pitch = info.at(1);
 
     hsiWidget->setPitch(m_pitch);
     hsiWidget->setRoll(m_roll);
@@ -410,7 +388,7 @@ void MainWindow::getCompassInfo(QList<qreal> info)
     hsiWidget->setHeading(m_heading);
 }
 
-void MainWindow::pushExit_clicked()
+void MainWindow::handleExit()
 {
     QCoreApplication::exit(0);
 }

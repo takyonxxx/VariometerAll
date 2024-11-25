@@ -8,11 +8,11 @@
 #include <QPolygonF>
 #include <cmath>
 
-class HSICompassWidget : public QWidget {
+class HSIWidget : public QWidget {
     Q_OBJECT
 
 public:
-    explicit HSICompassWidget(QWidget* parent = nullptr)
+    explicit HSIWidget(QWidget* parent = nullptr)
         : QWidget(parent), m_roll(0), m_pitch(0), m_heading(0), m_sizeRatio(1.0f), m_thickness(0.04f), m_padding(5) {
         QTimer* timer = new QTimer(this);
         connect(timer, &QTimer::timeout, this, [this]() { this->update(); });
@@ -76,8 +76,8 @@ protected:
         int totalComponentHeight = hsiSize + compassHeight;
         int verticalOffset = (height() - totalComponentHeight) * 10;
 
-        QRectF hsiRect(0, verticalOffset, hsiSize * 0.95, hsiSize * 0.95);
-        QRectF varioRect(hsiRect.right(), verticalOffset, hsiSize * 0.135, hsiSize * 0.95);
+        QRectF hsiRect(0, verticalOffset, hsiSize, hsiSize);
+        QRectF varioRect(hsiRect.right(), verticalOffset, hsiSize * 0.15, hsiSize);
         drawCompassAndHSI(painter, hsiRect);
         drawVarioIndicator(painter, varioRect);
     }
@@ -193,7 +193,7 @@ private:
         speedFont.setBold(true);
         painter.setFont(speedFont);
 
-        QString speedText = QString::number(m_verticalSpeed, 'f', 1) + "m/s";
+        QString speedText = QString::number(m_verticalSpeed, 'f', 1);
         painter.drawText(QRectF(startX + 2*textOffset, indicatorY - rect.width() * 0.2,
                                 rect.width(), rect.width() * 0.4),
                          Qt::AlignLeft | Qt::AlignVCenter,

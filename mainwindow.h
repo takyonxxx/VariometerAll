@@ -57,7 +57,7 @@ public:
 
 private slots:
 
-    void pushExit_clicked();
+    void handleExit();
     void getGpsInfo(QList<qreal> info);
     void getPressureInfo(QList<qreal> info);
     void getAccInfo(QList<qreal> info);
@@ -66,7 +66,7 @@ private slots:
 
 private:
     void initializeUI();
-    void configureDisplayStyles();
+    void setupStyles();
     void initializeFilters();
     void initializeSensors();
     void processPressureData(const QList<qreal>& info);
@@ -89,7 +89,7 @@ private:
     QLabel *label_vario;
     QPushButton *pushExit;
 
-    HSICompassWidget *hsiWidget{nullptr};
+    HSIWidget *hsiWidget{nullptr};
 
     // Device managers
     SensorManager* sensorManager{nullptr};   // Pressure and temperature sensor manager
