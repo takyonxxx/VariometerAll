@@ -227,21 +227,6 @@ void MainWindow::setupUi()
     }
 
     pushExit = new QPushButton("EXIT", this);
-    pushExit->setStyleSheet(R"(
-       QPushButton {
-           color: #FFFFFF;
-           background-color: #2a3f5f;
-           font-family: 'Consolas';
-           font-size: 28px;
-           font-weight: bold;
-           padding: 10px;
-           border-radius: 5px;
-       }
-       QPushButton:hover {
-           background-color: #FF0000;
-           color: #0C1824;
-       }
-   )");
 
     int row = 0;
     gridLayout->addWidget(hsiWidget, row++, 0, 1, 3);
@@ -264,25 +249,12 @@ void MainWindow::setupStyles()
         }
         QLabel {
             color: #ffffff;
-            font-size: 30px;
+            font-size: 32px;
             font-weight: bold;
             padding: 10px;
             background-color: #2d2d2d;
             border-radius: 5px;
             qproperty-alignment: AlignCenter;    /* Centers text horizontally and vertically */
-        }
-        QPushButton {
-            background-color: #2a3f5f;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            padding: 10px;
-            border-radius: 5px;
-            border: none;
-            text-align: center;                  /* Centers button text */
-        }
-        QPushButton:hover {
-            background-color: #ff0000;
         }
     )";
 
@@ -304,6 +276,22 @@ void MainWindow::setupStyles()
     // Apply styles
     setStyleSheet(baseStyle);
     label_vario->setStyleSheet(varioStyle);
+
+    pushExit->setStyleSheet(R"(
+       QPushButton {
+           color: #FFFFFF;
+           background-color: #2a3f5f;
+           font-family: 'Consolas';
+           font-size: 28px;
+           font-weight: bold;
+           padding: 10px;
+           border-radius: 5px;
+       }
+       QPushButton:hover {
+           background-color: #FF0000;
+           color: #0C1824;
+       }
+   )");
 
     // Additional label styles with centering
     QString commonLabelStyle = "background-color: #5c4033; qproperty-alignment: AlignCenter;";
@@ -465,7 +453,7 @@ void MainWindow::getAccInfo(QList<qreal> info)
     m_roll = info.at(0);
     m_pitch = info.at(1);
 
-    hsiWidget->setPitch(m_pitch);
+    hsiWidget->setPitch(m_pitch - 90);
     hsiWidget->setRoll(m_roll);
 }
 
