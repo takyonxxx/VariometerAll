@@ -138,7 +138,7 @@ void SensorManager::run()
         processAccelerometerData();
         emit sendPressureInfo(readPressure());
         emit sendAccInfo(readAcc());
-        msleep(250);
+        msleep(50);
     }
 }
 

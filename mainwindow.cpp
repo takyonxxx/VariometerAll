@@ -13,7 +13,6 @@ const QString BACKGROUND = "#2a3f5f;";
 
 #ifdef Q_OS_IOS
 #include "LocationPermission.h"
-#import <UIKit/UIKit.h>
 #endif
 
 #ifdef Q_OS_ANDROID
@@ -123,7 +122,6 @@ MainWindow::MainWindow(QWidget *parent)
 
 #ifdef Q_OS_IOS
         requestIOSLocationPermission();
-        [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
 #endif
 
         initializeFilters();
@@ -182,15 +180,6 @@ void MainWindow::initializeUI()
     // Set window properties
     setWindowTitle("Variometer");
     setWindowFlags(Qt::FramelessWindowHint); // Optional: for fullscreen avionics
-
-    // Center and size the window
-    // QScreen *screen = QGuiApplication::primaryScreen();
-    // QRect screenGeometry = screen->geometry();
-    // int width = screenGeometry.width() * 0.8;  // 80% of screen width
-    // int height = screenGeometry.height() * 0.8; // 80% of screen height
-    // setGeometry((screenGeometry.width() - width) / 2,
-    //             (screenGeometry.height() - height) / 2,
-    //             width, height);
 }
 
 void MainWindow::setupUi()
@@ -222,7 +211,7 @@ void MainWindow::setupUi()
    )";
 
     hsiWidget = new HSIWidget(this);
-    hsiWidget->setMinimumHeight(400);
+    hsiWidget->setMinimumHeight(375);
     hsiWidget->setThickness(0.08f);
     hsiWidget->setHeadingTextOffset(0.4f);
     hsiWidget->setStyleSheet("background: rgba(22, 39, 54, 0.95);");
@@ -243,7 +232,7 @@ void MainWindow::setupUi()
            color: #FFFFFF;
            background-color: #2a3f5f;
            font-family: 'Consolas';
-           font-size: 30px;
+           font-size: 28px;
            font-weight: bold;
            padding: 10px;
            border-radius: 5px;
@@ -275,7 +264,7 @@ void MainWindow::setupStyles()
         }
         QLabel {
             color: #ffffff;
-            font-size: 32px;
+            font-size: 30px;
             font-weight: bold;
             padding: 10px;
             background-color: #2d2d2d;
@@ -372,16 +361,16 @@ void MainWindow::initializeSensors()
     connect(sensorManager, &SensorManager::sendGyroInfo, this, &MainWindow::getGyroInfo);
     connect(sensorManager, &SensorManager::sendCompassInfo, this, &MainWindow::getCompassInfo);
     sensorManager->start();
-#ifdef Q_OS_ANDROID
+
     readGps = new ReadGps(this);
     connect(readGps, &ReadGps::sendInfo, this, &MainWindow::getGpsInfo);
-#endif
 }
 
 void MainWindow::processPressureData(const QList<qreal>& info)
 {    
     pressure = info.at(0);
     temperature = info.at(1);
+
     quint64 timestamp = static_cast<quint64>(info.at(2));
 
     if (lastPressTimestamp > 0) {

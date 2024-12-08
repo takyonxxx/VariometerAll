@@ -6,8 +6,10 @@ ReadGps::ReadGps(QObject *parent)
     , retryTimer(nullptr)
     , retryCount(0)
     , updatesStarted(false)
+    , isWaitingForFix(false)
 {
-    checkPermissionAndInitialize();
+    // Delay initialization slightly to avoid UI blocking
+    QTimer::singleShot(100, this, &ReadGps::checkPermissionAndInitialize);
 }
 
 ReadGps::~ReadGps()
@@ -23,7 +25,7 @@ void ReadGps::checkPermissionAndInitialize()
 
     source = QGeoPositionInfoSource::createDefaultSource(this);
 
-    if (source) {      
+    if (source) {
         connect(source, &QGeoPositionInfoSource::positionUpdated,
                 this, &ReadGps::positionUpdated);
         connect(source, &QGeoPositionInfoSource::errorOccurred,
@@ -31,14 +33,56 @@ void ReadGps::checkPermissionAndInitialize()
 
         // Set high accuracy mode
         source->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
-        source->setUpdateInterval(1000);
+        source->setUpdateInterval(NORMAL_TIMEOUT);
 
-        // Request a single update first to trigger the permission dialog
-        source->requestUpdate(1000);
-        updatesStarted = false;
+        // Start with a single update request
+        requestSingleUpdate();
     } else {
-        qDebug() << "Error: Could not create position source";
+        qDebug() << "Error: Could not create position source. Verify location permissions in Info.plist";
     }
+}
+
+void ReadGps::requestSingleUpdate()
+{
+    if (!source) return;
+
+    isWaitingForFix = true;
+    source->requestUpdate(INITIAL_TIMEOUT);
+
+    // Start retry timer for timeout handling
+    startRetryTimer();
+}
+
+void ReadGps::startRetryTimer()
+{
+    if (!retryTimer) {
+        retryTimer = new QTimer(this);
+        retryTimer->setSingleShot(true);
+        connect(retryTimer, &QTimer::timeout, this, &ReadGps::retryUpdate);
+    }
+    retryTimer->start(INITIAL_TIMEOUT + 1000); // Slightly longer than the update request
+}
+
+void ReadGps::retryUpdate()
+{
+    if (!isWaitingForFix) return;
+
+    retryCount++;
+    qDebug() << "GPS timeout - Attempt" << retryCount << "of" << MAX_RETRIES;
+
+    if (retryCount >= MAX_RETRIES) {
+        emit gpsTimeout();
+        retryCount = 0;
+        isWaitingForFix = false;
+
+        // Try restarting the GPS
+        cleanupGPS();
+        QTimer::singleShot(1000, this, &ReadGps::checkPermissionAndInitialize);
+        return;
+    }
+
+    // Try another single update
+    requestSingleUpdate();
 }
 
 void ReadGps::initializeGPS()
@@ -47,7 +91,7 @@ void ReadGps::initializeGPS()
 
     if (!updatesStarted) {
         source->startUpdates();
-        updatesStarted = true;        
+        updatesStarted = true;
     }
 }
 
@@ -61,6 +105,8 @@ void ReadGps::cleanupGPS()
         source = nullptr;
     }
     updatesStarted = false;
+    isWaitingForFix = false;
+    retryCount = 0;
 }
 
 void ReadGps::stopRetryTimer()
@@ -70,7 +116,6 @@ void ReadGps::stopRetryTimer()
         delete retryTimer;
         retryTimer = nullptr;
     }
-    retryCount = 0;
 }
 
 QList<qreal> ReadGps::captureGpsData()
@@ -102,6 +147,8 @@ QList<qreal> ReadGps::captureGpsData()
 void ReadGps::positionUpdated(const QGeoPositionInfo &info)
 {
     stopRetryTimer();
+    isWaitingForFix = false;
+    retryCount = 0;
 
     positionInfo = info;
     emit sendInfo(captureGpsData());
@@ -120,36 +167,26 @@ void ReadGps::handleError()
     case QGeoPositionInfoSource::AccessError:
         qDebug() << "Location permission denied - Please enable in Settings";
         updatesStarted = false;
+        isWaitingForFix = false;
+        emit permissionDenied();
+        break;
 
-        if (retryCount < MAX_RETRIES) {
-            if (!retryTimer) {
-                retryTimer = new QTimer(this);
-                retryTimer->setSingleShot(true);
-                connect(retryTimer, &QTimer::timeout, this, [this]() {
-                    retryCount++;
-                    checkPermissionAndInitialize();
-                });
-            }
-            retryTimer->start(2000); // Retry after 2 seconds
-        } else {
-            emit permissionDenied();
-            qDebug() << "Maximum retry attempts reached. Please enable location services in Settings.";
-            qDebug() << "To enable location services:"
-                     << "\n1. Open Settings"
-                     << "\n2. Navigate to Privacy > Location Services"
-                     << "\n3. Find your app and select 'Always' or 'While Using'";
+    case QGeoPositionInfoSource::UpdateTimeoutError:
+        if (!retryTimer || !retryTimer->isActive()) {
+            retryUpdate();
         }
         break;
 
     case QGeoPositionInfoSource::ClosedError:
         qDebug() << "Position source closed - Attempting to restart";
-        checkPermissionAndInitialize();
+        cleanupGPS();
+        QTimer::singleShot(1000, this, &ReadGps::checkPermissionAndInitialize);
         break;
 
     default:
-        qDebug() << "Position source error:" << source->error()
-                 << "- Attempting to restart GPS";
-        checkPermissionAndInitialize();
+        qDebug() << "Position source error:" << source->error() << "- Attempting to restart";
+        cleanupGPS();
+        QTimer::singleShot(1000, this, &ReadGps::checkPermissionAndInitialize);
         break;
     }
 }
