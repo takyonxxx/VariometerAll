@@ -78,7 +78,7 @@ void VarioSound::initializeAudio()
 {
     QAudioFormat format;
     format.setSampleRate(SAMPLE_RATE);
-    format.setChannelCount(2);
+    format.setChannelCount(CHANNELS);
     format.setSampleFormat(QAudioFormat::Float);
 
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
