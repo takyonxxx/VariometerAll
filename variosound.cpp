@@ -9,6 +9,7 @@
 #include <QThread>
 #include <QDebug>
 
+
 class ContinuousAudioBuffer : public QIODevice
 {
 public:
@@ -63,7 +64,7 @@ private:
 
 VarioSound::VarioSound(QObject *parent)
     : QObject(parent), m_isRunning(false), m_currentVario(0.0), m_frequency(0.0),
-    m_duration(0), m_currentVolume(1.0), m_sinkToneOnThreshold(-1.0), m_climbToneOnThreshold(0.2)
+    m_duration(0), m_currentVolume(1.0), m_sinkToneOnThreshold(-1.0), m_climbToneOnThreshold(0.1)
 {
     m_audioBuffer = new ContinuousAudioBuffer(this);
     initializeAudio();
@@ -96,6 +97,10 @@ void VarioSound::initializeAudio()
 
 void VarioSound::generateTone(float frequency, int durationMs)
 {
+    if (m_currentVolume <= 0.0f || frequency <= 0.0f) {
+        return;  // Don't generate any audio if volume or frequency is 0
+    }
+
     const int sampleRate = 48000;
     const int channelCount = 2;
     const int bytesPerSample = sizeof(float);
@@ -108,7 +113,7 @@ void VarioSound::generateTone(float frequency, int durationMs)
     audioData.resize(bufferSize);
     float* data = reinterpret_cast<float*>(audioData.data());
 
-    const float amplitude = 0.5f * m_currentVolume;
+    const float amplitude = m_currentVolume;  // Use volume directly
     const float angularFrequency = 2.0f * M_PI * frequency / sampleRate;
 
     // Add phase continuity
@@ -155,14 +160,21 @@ void VarioSound::generateTone(float frequency, int durationMs)
 
 void VarioSound::calculateSoundCharacteristics()
 {
-    if (m_currentVario <= m_sinkToneOnThreshold) {
+    // First check if we're in the silent zone (including 0)
+    if (m_currentVario > m_sinkToneOnThreshold && m_currentVario < m_climbToneOnThreshold) {
+        // Silent zone
+        m_currentVolume = 0.0f;
+        m_duration = 50; // Keep a small duration for timer updates
+        m_frequency = 0.0f;
+    }
+    // Then check sink tone
+    else if (m_currentVario <= m_sinkToneOnThreshold) {
         m_frequency = 440.0f;
         m_duration = 800;
         m_currentVolume = 1.0f;
-    } else if (m_currentVario <= m_climbToneOnThreshold) {
-        m_currentVolume = 0.0f;
-        m_duration = 0;
-    } else {
+    }
+    // Finally check climb tone
+    else if (m_currentVario >= m_climbToneOnThreshold) {
         m_frequency = qBound(800.0f,
                              static_cast<float>(5.0 * pow(m_currentVario, 3) - 120.0 * pow(m_currentVario, 2) + 850.0 * m_currentVario + 100.0),
                              3000.0f);
@@ -183,11 +195,18 @@ void VarioSound::generateNextBuffer()
     if (!m_isRunning) return;
 
     calculateSoundCharacteristics();
-    if (m_currentVolume > 0.0f) {
+
+    // Only generate tone if volume is greater than 0
+    if (m_currentVolume > 0.0f && m_frequency > 0.0f) {
         generateTone(m_frequency, m_duration);
 
         if (m_audioSink->state() != QAudio::ActiveState) {
             m_audioSink->start(m_audioBuffer);
+        }
+    } else {
+        // Stop audio if volume is 0
+        if (m_audioSink->state() == QAudio::ActiveState) {
+            m_audioSink->stop();
         }
     }
 
@@ -219,3 +238,4 @@ void VarioSound::stop()
         m_audioBuffer->close();
     }
 }
+
