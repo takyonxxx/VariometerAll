@@ -436,7 +436,7 @@ private:
 
         // Draw heading text
         painter.setPen(Qt::white);
-        QFont font("Tahoma", rect.width() / 16);
+        QFont font("Tahoma", rect.width() / 8);
         font.setBold(true);
         painter.setFont(font);
         QRectF textRect = rect.adjusted(rect.width() * m_thickness, rect.height() * m_thickness, -rect.width() * m_thickness, -rect.height() * m_thickness);

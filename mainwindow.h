@@ -27,8 +27,8 @@
 // Constants for atmospheric calculations
 #define SEA_LEVEL_PRESSURE 101325.0f        // Standard sea level pressure in Pascals
 #define SEA_LEVEL_PRESSURE_HPA 1013.25f     // Standard sea level pressure in hPa
-#define KF_VAR_ACCEL 0.024f                 // Default Kalman filter acceleration variance
-#define KF_VAR_MEASUREMENT 0.5f             // Default Kalman filter measurement variance
+#define KF_VAR_ACCEL 0.001f                 // Default Kalman filter acceleration variance
+#define KF_VAR_MEASUREMENT 0.01f             // Default Kalman filter measurement variance
 
 // Display color constants
 namespace DisplayColors {
@@ -105,14 +105,14 @@ private:
     // Timing variables
     qreal p_dt{0.0};                        // Time delta for calculations
     quint64 lastPressTimestamp{0};          // Timestamp of last pressure reading
-    qreal pDeltaT{0.0};                     // Time delta between pressure readings    
+
     QDateTime p_end;                        // End time for calculations
     QDateTime p_start;
 
 
     // Kalman filter parameters
-    qreal accelVariance{KF_VAR_ACCEL};             // Acceleration variance
-    qreal measurementVariance{KF_VAR_MEASUREMENT}; // Measurement variance
+    qreal accelVariance{0};             // Acceleration variance
+    qreal measurementVariance{0}; // Measurement variance
 
     // GPS data
     qreal latitude{0.0};                    // Current latitude in degrees

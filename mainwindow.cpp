@@ -6,7 +6,7 @@
 
 // Color constants for avionic display
 namespace DisplayColors {
-const QString DISPLAY_POSITIVE = "#FFFFFF";  // Aviation green (daha parlak yeşil)
+const QString DISPLAY_POSITIVE = "#00CED1";  // Aviation green (daha parlak yeşil)
 const QString DISPLAY_NEGATIVE = "#FF1414";  // Aviation red (daha parlak kırmızı)
 const QString BACKGROUND = "#022136;";
 }
@@ -107,6 +107,8 @@ void MainWindow::keepScreenOn()
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)    
     , pressure(SEA_LEVEL_PRESSURE)
+    , accelVariance(KF_VAR_ACCEL)
+    , measurementVariance(KF_VAR_MEASUREMENT)
     , gpsaltitude(0.0)
     , baroaltitude(0.0)
     , stopReading(false)
@@ -141,9 +143,6 @@ MainWindow::MainWindow(QWidget *parent)
 
         //     if(varioSound)
         //         varioSound->updateVario(vario);
-
-        //     if(hsiWidget)
-        //         hsiWidget->setVerticalSpeed(vario);
 
         //     updateDisplays();
 
@@ -242,7 +241,7 @@ void MainWindow::setupStyles()
             background-color: #1a1a1a;
         }
         QLabel {
-            color: #ffffff;
+            color: #FBFBF9;
             font-size: 40px;
             font-weight: bold;
             padding: 10px;
@@ -349,16 +348,11 @@ void MainWindow::processPressureData(const QList<qreal>& info)
 {    
     pressure = info.at(0);
     temperature = info.at(1);
-    //qDebug() << temperature;
 
     quint64 timestamp = static_cast<quint64>(info.at(2));
 
     if (lastPressTimestamp > 0) {
-        pDeltaT = static_cast<qreal>(timestamp - lastPressTimestamp) / 1000000.0f;
-
-        if (pDeltaT > 0) {
-            updatePressureAndAltitude();
-        }
+        updatePressureAndAltitude();
     }
     lastPressTimestamp = timestamp;
 }
@@ -385,7 +379,6 @@ void MainWindow::updatePressureAndAltitude()
 
     // Calculate vertical speed
     vario = altitude_filter->GetXVel();
-    //hsiWidget->setVerticalSpeed(vario);
 
     if(varioSound)
         varioSound->updateVario(vario);
@@ -413,7 +406,7 @@ void MainWindow::getGpsInfo(QList<qreal> info)
 
     // Update displays - Fixed ambiguous arg() calls
     if(gpsaltitude != 0)
-        label_altitude->setText(QString("%1 m").arg(QString::number(gpsaltitude, 'f', 1)));
+        label_altitude->setText(QString("Gps: %1 m").arg(QString::number(gpsaltitude, 'f', 0)));
     label_speed->setText(QString("%1 km/h").arg(QString::number(groundSpeed, 'f', 1)));
 
     // Update status display - Fixed ambiguous arg() calls

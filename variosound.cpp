@@ -2,10 +2,70 @@
 #include <QtMath>
 #include <QAudioDevice>
 #include <QAudioFormat>
+#include <QMediaDevices>
+#include <QAudioSink>
+#include <QTimer>
+#include <QIODevice>
+#include <QThread>
+#include <QDebug>
+
+class ContinuousAudioBuffer : public QIODevice
+{
+public:
+    explicit ContinuousAudioBuffer(QObject *parent = nullptr)
+        : QIODevice(parent), m_readPosition(0)
+    {
+    }
+
+    qint64 readData(char *data, qint64 maxSize) override {
+        if (m_buffer.isEmpty()) {
+            return 0;
+        }
+
+        qint64 total = 0;
+        while (total < maxSize) {
+            if (m_readPosition >= m_buffer.size()) {
+                m_readPosition = 0;  // Loop back to start
+            }
+
+            qint64 chunk = qMin(maxSize - total, static_cast<qint64>(m_buffer.size() - m_readPosition));
+            memcpy(data + total, m_buffer.constData() + m_readPosition, chunk);
+            m_readPosition += chunk;
+            total += chunk;
+        }
+
+        return total;
+    }
+
+    qint64 writeData(const char *data, qint64 len) override {
+        Q_UNUSED(data);
+        Q_UNUSED(len);
+        return 0;
+    }
+
+    bool isSequential() const override {
+        return true;
+    }
+
+    void setAudioData(const QByteArray &data) {
+        m_buffer = data;
+        m_readPosition = 0;
+    }
+
+    qint64 bytesAvailable() const override {
+        return m_buffer.size() + QIODevice::bytesAvailable();
+    }
+
+private:
+    QByteArray m_buffer;
+    qint64 m_readPosition;
+};
 
 VarioSound::VarioSound(QObject *parent)
-    : QObject(parent)
+    : QObject(parent), m_isRunning(false), m_currentVario(0.0), m_frequency(0.0),
+    m_duration(0), m_currentVolume(1.0), m_sinkToneOnThreshold(-1.0), m_climbToneOnThreshold(0.2)
 {
+    m_audioBuffer = new ContinuousAudioBuffer(this);
     initializeAudio();
     connect(&m_toneTimer, &QTimer::timeout, this, &VarioSound::generateNextBuffer);
 }
@@ -18,70 +78,96 @@ VarioSound::~VarioSound()
 void VarioSound::initializeAudio()
 {
     QAudioFormat format;
-    format.setSampleRate(SAMPLE_RATE);
-    format.setChannelCount(CHANNELS);
-    format.setSampleFormat(QAudioFormat::Int16);
+    format.setSampleRate(48000);
+    format.setChannelCount(2);
+    format.setSampleFormat(QAudioFormat::Float);
 
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
     if (!device.isFormatSupported(format)) {
+        qWarning() << "Requested format not supported, using preferred format";
         format = device.preferredFormat();
     }
 
     m_audioSink = std::make_unique<QAudioSink>(device, format);
-    connect(m_audioSink.get(), &QAudioSink::stateChanged,
-            this, &VarioSound::handleAudioStateChanged);
+    // Increase buffer size for smoother playback
+    m_audioSink->setBufferSize(32768); // 4x larger buffer
+    connect(m_audioSink.get(), &QAudioSink::stateChanged, this, &VarioSound::handleAudioStateChanged);
 }
 
 void VarioSound::generateTone(float frequency, int durationMs)
 {
-    const int numSamples = (SAMPLE_RATE * durationMs) / 1000;
-    m_audioData.resize(numSamples * sizeof(qint16));
-    qint16* data = reinterpret_cast<qint16*>(m_audioData.data());
+    const int sampleRate = 48000;
+    const int channelCount = 2;
+    const int bytesPerSample = sizeof(float);
+    // Increase buffer size for smoother sound
+    const int framesPerBuffer = 4096; // 4x larger buffer
+    const int totalFrames = (sampleRate * durationMs) / 1000;
+    const int bufferSize = framesPerBuffer * channelCount * bytesPerSample;
 
-    const float amplitude = 32767.0f * m_currentVolume;
-    const float baseAngularFrequency = 2.0f * M_PI * frequency;
+    QByteArray audioData;
+    audioData.resize(bufferSize);
+    float* data = reinterpret_cast<float*>(audioData.data());
 
-    for (int i = 0; i < numSamples; ++i) {
-        float t = static_cast<float>(i) / SAMPLE_RATE;
-        float window = 0.5f * (1.0f - qCos(2.0f * M_PI * i / (numSamples - 1)));
+    const float amplitude = 0.5f * m_currentVolume;
+    const float angularFrequency = 2.0f * M_PI * frequency / sampleRate;
 
-        // Daha güçlü frekans modülasyonu
-        // float modulatedFrequency = baseAngularFrequency * (1.0f + 0.03f * qSin(2.0f * M_PI * 4.0f * t)); // 4 Hz modülasyon
-        float modulatedFrequency = baseAngularFrequency * (1.0f + 0.01f * qSin(2.0f * M_PI * 2.0f * t)); // 2 Hz modülasyon
+    // Add phase continuity
+    static float lastPhase = 0.0f;
+    float phase = lastPhase;
 
-        // Ek harmonikler
-        float harmonic1 = 0.4f * qSin(2.0f * modulatedFrequency * t); // İlk harmonik
-        float harmonic2 = 0.2f * qSin(3.0f * modulatedFrequency * t); // İkinci harmonik
+    // Generate samples with smoother envelope
+    for (int i = 0; i < framesPerBuffer; ++i) {
+        // Smooth envelope with longer attack/release
+        float envelope = 1.0f;
+        if (i < framesPerBuffer / 8) {
+            envelope = static_cast<float>(i) / (framesPerBuffer / 8); // Attack
+        } else if (i > framesPerBuffer * 7 / 8) {
+            envelope = static_cast<float>(framesPerBuffer - i) / (framesPerBuffer / 8); // Release
+        }
 
-        // Dinamik genlik değişimi ile zenginleştirilmiş ses
-        data[i] = static_cast<qint16>((amplitude * qSin(modulatedFrequency * t) + harmonic1 + harmonic2) * window);
+        // Add slight frequency modulation for richer sound
+        float freqMod = 1.0f + 0.001f * qSin(2.0f * M_PI * 3.0f * i / framesPerBuffer);
+
+        float sample = amplitude * qSin(phase) * envelope;
+        phase += angularFrequency * freqMod;
+
+        // Normalize phase to prevent floating point errors
+        if (phase >= 2.0f * M_PI) {
+            phase -= 2.0f * M_PI;
+        }
+
+        data[i * 2] = sample;     // Left channel
+        data[i * 2 + 1] = sample; // Right channel
     }
 
-    m_audioBuffer.setBuffer(&m_audioData);
-    m_audioBuffer.open(QIODevice::ReadOnly);
-    m_audioBuffer.seek(0);
+    lastPhase = phase;
+
+    if (m_audioBuffer->isOpen()) {
+        m_audioBuffer->close();
+    }
+
+    m_audioBuffer->setAudioData(audioData);
+    if (!m_audioBuffer->open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open audio buffer!";
+        return;
+    }
 }
 
 void VarioSound::calculateSoundCharacteristics()
 {
     if (m_currentVario <= m_sinkToneOnThreshold) {
-        m_frequency = 440.0f; // Sabit batış frekansı
-        m_duration = 800;    // Uzun batış sesi
-        m_currentVolume = 1.3f; // Daha güçlü ses
+        m_frequency = 440.0f;
+        m_duration = 800;
+        m_currentVolume = 1.0f;
     } else if (m_currentVario <= m_climbToneOnThreshold) {
-        m_currentVolume = 0.0f; // Sessizlik
+        m_currentVolume = 0.0f;
         m_duration = 0;
     } else {
-        // Frekansın daha hızlı artışı
         m_frequency = qBound(800.0f,
                              static_cast<float>(5.0 * pow(m_currentVario, 3) - 120.0 * pow(m_currentVario, 2) + 850.0 * m_currentVario + 100.0),
                              3000.0f);
-
-        // Süreler daha kısa ve dinamik
         m_duration = qBound(20, static_cast<int>(-35.0 * m_currentVario + 200.0), 350);
-
-        // Ses seviyesi modülasyonu
-        m_currentVolume = 1.25f + 0.1f * qSin(2.0f * M_PI * 2.0f * m_currentVario); // Hafif dalgalanma
+        m_currentVolume = 1.0f;
     }
 }
 
@@ -98,17 +184,15 @@ void VarioSound::generateNextBuffer()
 
     calculateSoundCharacteristics();
     if (m_currentVolume > 0.0f) {
-        if (m_audioBuffer.isOpen()) {
-            m_audioBuffer.close();
-        }
         generateTone(m_frequency, m_duration);
-        if (m_audioSink->state() != QAudio::StoppedState) {
-            m_audioSink->stop();
+
+        if (m_audioSink->state() != QAudio::ActiveState) {
+            m_audioSink->start(m_audioBuffer);
         }
-        m_audioSink->start(&m_audioBuffer);
     }
 
-    m_toneTimer.start(m_duration + m_duration / 2);
+    // Use a longer update interval for smoother transitions
+    m_toneTimer.start(50);
 }
 
 void VarioSound::updateVario(qreal vario)
@@ -131,5 +215,7 @@ void VarioSound::stop()
     if (m_audioSink) {
         m_audioSink->stop();
     }
-    m_audioBuffer.close();
+    if (m_audioBuffer) {
+        m_audioBuffer->close();
+    }
 }
