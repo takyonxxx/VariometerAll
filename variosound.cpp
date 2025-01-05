@@ -39,13 +39,22 @@ void VarioSound::generateTone(float frequency, int durationMs)
     qint16* data = reinterpret_cast<qint16*>(m_audioData.data());
 
     const float amplitude = 32767.0f * m_currentVolume;
-    const float angularFrequency = 2.0f * M_PI * frequency;
+    const float baseAngularFrequency = 2.0f * M_PI * frequency;
 
-    // Apply Hann window for smooth transitions
     for (int i = 0; i < numSamples; ++i) {
         float t = static_cast<float>(i) / SAMPLE_RATE;
         float window = 0.5f * (1.0f - qCos(2.0f * M_PI * i / (numSamples - 1)));
-        data[i] = static_cast<qint16>(amplitude * qSin(angularFrequency * t) * window);
+
+        // Daha güçlü frekans modülasyonu
+        // float modulatedFrequency = baseAngularFrequency * (1.0f + 0.03f * qSin(2.0f * M_PI * 4.0f * t)); // 4 Hz modülasyon
+        float modulatedFrequency = baseAngularFrequency * (1.0f + 0.01f * qSin(2.0f * M_PI * 2.0f * t)); // 2 Hz modülasyon
+
+        // Ek harmonikler
+        float harmonic1 = 0.4f * qSin(2.0f * modulatedFrequency * t); // İlk harmonik
+        float harmonic2 = 0.2f * qSin(3.0f * modulatedFrequency * t); // İkinci harmonik
+
+        // Dinamik genlik değişimi ile zenginleştirilmiş ses
+        data[i] = static_cast<qint16>((amplitude * qSin(modulatedFrequency * t) + harmonic1 + harmonic2) * window);
     }
 
     m_audioBuffer.setBuffer(&m_audioData);
@@ -55,22 +64,24 @@ void VarioSound::generateTone(float frequency, int durationMs)
 
 void VarioSound::calculateSoundCharacteristics()
 {
-    // Frequency calculation with smooth transitions
     if (m_currentVario <= m_sinkToneOnThreshold) {
-        m_frequency = 440.0f;
-        m_duration = 1000;
-        m_currentVolume = 1.0f;
+        m_frequency = 440.0f; // Sabit batış frekansı
+        m_duration = 800;    // Uzun batış sesi
+        m_currentVolume = 1.3f; // Daha güçlü ses
     } else if (m_currentVario <= m_climbToneOnThreshold) {
-        m_currentVolume = 0.0f;
+        m_currentVolume = 0.0f; // Sessizlik
         m_duration = 0;
     } else {
-        m_frequency = qBound(300.0f,
-                             static_cast<float>(2.94269 * pow(m_currentVario, 3) - 71.112246 * pow(m_currentVario, 2) + 614.136517 * m_currentVario + 30.845693),
-                             1800.0f);
-        m_duration = qBound(50,
-                            static_cast<int>(-25.0 * m_currentVario + 300.0),
-                            1000);
-        m_currentVolume = 1.0f;
+        // Frekansın daha hızlı artışı
+        m_frequency = qBound(800.0f,
+                             static_cast<float>(5.0 * pow(m_currentVario, 3) - 120.0 * pow(m_currentVario, 2) + 850.0 * m_currentVario + 100.0),
+                             3000.0f);
+
+        // Süreler daha kısa ve dinamik
+        m_duration = qBound(20, static_cast<int>(-35.0 * m_currentVario + 200.0), 350);
+
+        // Ses seviyesi modülasyonu
+        m_currentVolume = 1.25f + 0.1f * qSin(2.0f * M_PI * 2.0f * m_currentVario); // Hafif dalgalanma
     }
 }
 

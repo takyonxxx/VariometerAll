@@ -122,8 +122,8 @@ private:
     // Sensor data
     qreal pressure{SEA_LEVEL_PRESSURE};     // Current pressure in Pa
     qreal temperature{0.0};                 // Current temperature in Celsius
-    qreal altitude{0.0};                    // GPS altitude in meters
     qreal baroaltitude{0.0};               // Barometric altitude in meters
+    qreal gpsaltitude{0.0};
     qreal vario{0.0};                      // Vertical speed in m/s
     qreal m_roll = 0.0;
     qreal m_pitch = 0.0;

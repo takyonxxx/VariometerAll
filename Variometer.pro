@@ -30,6 +30,9 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
+QMAKE_TARGET_BUNDLE_PREFIX = tbiliyor.com
+PRODUCT_BUNDLE_IDENTIFIER = $${QMAKE_TARGET_BUNDLE_PREFIX}.variometer
+
 macos {
     message("macx enabled")
 

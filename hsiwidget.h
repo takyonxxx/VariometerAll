@@ -65,21 +65,16 @@ protected:
         int totalWidth = width() - m_padding;
         int totalHeight = height() - m_padding;
 
-        // HSI size (60% of total height)
-        int hsiHeight = static_cast<int>(totalHeight * 0.8);
+        // HSI size (80% of total height)
+        int hsiHeight = static_cast<int>(totalHeight * 0.9);
         int hsiSize = qMin(totalWidth, hsiHeight);
 
-        // Calculate sliding compass height (20% of total height)
-        int compassHeight = static_cast<int>(totalHeight * 0.2);
+        int offsetw = (width() - hsiSize) / 2;
+        int offseth = (height() - hsiSize) / 2;
 
-        // Calculate vertical centering
-        int totalComponentHeight = hsiSize + compassHeight;
-        int verticalOffset = (height() - totalComponentHeight) * 10;
-
-        QRectF hsiRect(0, verticalOffset, hsiSize, hsiSize);
-        QRectF varioRect(hsiRect.right(), verticalOffset, hsiSize * 0.15, hsiSize);
+        // HSI rectangle centered both vertically and horizontally
+        QRectF hsiRect(offsetw, offseth, hsiSize, hsiSize);
         drawCompassAndHSI(painter, hsiRect);
-        drawVarioIndicator(painter, varioRect);
     }
 
     void resizeEvent(QResizeEvent* event) override
