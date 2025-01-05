@@ -369,8 +369,9 @@ void MainWindow::updatePressureAndAltitude()
     p_dt = elapsedTimeMillis / 1000.0;
 
     // Update pressure with Kalman filter
-    pressure_filter->Update(pressure, KF_VAR_MEASUREMENT, p_dt);
-    pressure = pressure_filter->GetXAbs() * 0.01; // Convert to hPa
+    // pressure_filter->Update(pressure, KF_VAR_MEASUREMENT, p_dt);
+    // pressure = pressure_filter->GetXAbs() * 0.01; // Convert to hPa
+    pressure = pressure * 0.01; // Convert to hPa
 
     // Calculate and filter barometric altitude
     baroaltitude = 44330.0 * (1.0 - std::pow(pressure / SEA_LEVEL_PRESSURE_HPA, 0.19));

@@ -6,9 +6,7 @@
 #include <QAudioSink>
 #include <QTimer>
 #include <QIODevice>
-#include <QThread>
 #include <QDebug>
-
 
 class ContinuousAudioBuffer : public QIODevice
 {
@@ -79,7 +77,7 @@ VarioSound::~VarioSound()
 void VarioSound::initializeAudio()
 {
     QAudioFormat format;
-    format.setSampleRate(48000);
+    format.setSampleRate(SAMPLE_RATE);
     format.setChannelCount(2);
     format.setSampleFormat(QAudioFormat::Float);
 
@@ -90,59 +88,53 @@ void VarioSound::initializeAudio()
     }
 
     m_audioSink = std::make_unique<QAudioSink>(device, format);
-    // Increase buffer size for smoother playback
-    m_audioSink->setBufferSize(32768); // 4x larger buffer
+    m_audioSink->setBufferSize(32768); // larger buffer
     connect(m_audioSink.get(), &QAudioSink::stateChanged, this, &VarioSound::handleAudioStateChanged);
 }
 
 void VarioSound::generateTone(float frequency, int durationMs)
 {
     if (m_currentVolume <= 0.0f || frequency <= 0.0f) {
-        return;  // Don't generate any audio if volume or frequency is 0
+        return;
     }
 
-    const int sampleRate = 48000;
-    const int channelCount = 2;
+    const int sampleRate = SAMPLE_RATE;
+    const int channelCount = CHANNELS;
     const int bytesPerSample = sizeof(float);
-    // Increase buffer size for smoother sound
-    const int framesPerBuffer = 4096; // 4x larger buffer
     const int totalFrames = (sampleRate * durationMs) / 1000;
-    const int bufferSize = framesPerBuffer * channelCount * bytesPerSample;
+    // Generate full duration of samples
+    const int bufferSize = totalFrames * channelCount * bytesPerSample;
 
     QByteArray audioData;
     audioData.resize(bufferSize);
     float* data = reinterpret_cast<float*>(audioData.data());
 
-    const float amplitude = m_currentVolume;  // Use volume directly
+    const float amplitude = m_currentVolume;
     const float angularFrequency = 2.0f * M_PI * frequency / sampleRate;
 
-    // Add phase continuity
     static float lastPhase = 0.0f;
     float phase = lastPhase;
 
-    // Generate samples with smoother envelope
-    for (int i = 0; i < framesPerBuffer; ++i) {
-        // Smooth envelope with longer attack/release
+    // Generate full duration of samples
+    for (int i = 0; i < totalFrames; ++i) {
+        // Longer attack/release for smoother transitions
         float envelope = 1.0f;
-        if (i < framesPerBuffer / 8) {
-            envelope = static_cast<float>(i) / (framesPerBuffer / 8); // Attack
-        } else if (i > framesPerBuffer * 7 / 8) {
-            envelope = static_cast<float>(framesPerBuffer - i) / (framesPerBuffer / 8); // Release
+        if (i < sampleRate / 100) { // 10ms attack
+            envelope = static_cast<float>(i) / (sampleRate / 100);
+        } else if (i > totalFrames - sampleRate / 100) { // 10ms release
+            envelope = static_cast<float>(totalFrames - i) / (sampleRate / 100);
         }
 
-        // Add slight frequency modulation for richer sound
-        float freqMod = 1.0f + 0.001f * qSin(2.0f * M_PI * 3.0f * i / framesPerBuffer);
-
+        float freqMod = 1.0f + 0.001f * qSin(2.0f * M_PI * 3.0f * i / totalFrames);
         float sample = amplitude * qSin(phase) * envelope;
         phase += angularFrequency * freqMod;
 
-        // Normalize phase to prevent floating point errors
         if (phase >= 2.0f * M_PI) {
             phase -= 2.0f * M_PI;
         }
 
-        data[i * 2] = sample;     // Left channel
-        data[i * 2 + 1] = sample; // Right channel
+        data[i * 2] = sample;
+        data[i * 2 + 1] = sample;
     }
 
     lastPhase = phase;
@@ -154,7 +146,6 @@ void VarioSound::generateTone(float frequency, int durationMs)
     m_audioBuffer->setAudioData(audioData);
     if (!m_audioBuffer->open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open audio buffer!";
-        return;
     }
 }
 
@@ -163,8 +154,8 @@ void VarioSound::calculateSoundCharacteristics()
     // First check if we're in the silent zone (including 0)
     if (m_currentVario > m_sinkToneOnThreshold && m_currentVario < m_climbToneOnThreshold) {
         // Silent zone
+        m_duration = 50;
         m_currentVolume = 0.0f;
-        m_duration = 50; // Keep a small duration for timer updates
         m_frequency = 0.0f;
     }
     // Then check sink tone
@@ -175,10 +166,20 @@ void VarioSound::calculateSoundCharacteristics()
     }
     // Finally check climb tone
     else if (m_currentVario >= m_climbToneOnThreshold) {
-        m_frequency = qBound(800.0f,
+
+        m_frequency = qBound(750.0f,
                              static_cast<float>(5.0 * pow(m_currentVario, 3) - 120.0 * pow(m_currentVario, 2) + 850.0 * m_currentVario + 100.0),
-                             3000.0f);
-        m_duration = qBound(20, static_cast<int>(-35.0 * m_currentVario + 200.0), 350);
+                             2200.0f);
+
+        // Calculate duration based on climb rate
+        // Faster climb = shorter duration
+        // Map climb rate to duration: 0.2 m/s -> 600ms, 5.0 m/s -> 200ms
+        // Use linear interpolation
+        float normalizedVario = qBound(0.2f, static_cast<float>(m_currentVario), 5.0f);
+        float durationRange = 750.0f - 100.0f;  // 800ms - 100ms
+        float varioRange = 5.0f - 0.2f;         // 5.0 m/s - 0.2 m/s
+
+        m_duration = static_cast<int>(750.0f - (durationRange * (normalizedVario - 0.2f) / varioRange)) / 5.0f;
         m_currentVolume = 1.0f;
     }
 }
@@ -194,24 +195,46 @@ void VarioSound::generateNextBuffer()
 {
     if (!m_isRunning) return;
 
+    static bool isBeeping = false;
     calculateSoundCharacteristics();
 
-    // Only generate tone if volume is greater than 0
-    if (m_currentVolume > 0.0f && m_frequency > 0.0f) {
-        generateTone(m_frequency, m_duration);
-
-        if (m_audioSink->state() != QAudio::ActiveState) {
-            m_audioSink->start(m_audioBuffer);
+    // Handle climb tones with beep pattern
+    if (m_currentVario >= m_climbToneOnThreshold) {
+        if (isBeeping) {
+            if (m_currentVolume > 0.0f && m_frequency > 0.0f) {
+                generateTone(m_frequency, m_duration);
+                if (m_audioSink->state() == QAudio::StoppedState ||
+                    m_audioSink->state() == QAudio::IdleState) {
+                    m_audioSink->start(m_audioBuffer);
+                }
+            }
+        } else {
+            if (m_audioSink->state() == QAudio::ActiveState) {
+                m_audioSink->stop();
+            }
         }
-    } else {
-        // Stop audio if volume is 0
+        isBeeping = !isBeeping;
+    }
+    // Handle sink tone (continuous)
+    else if (m_currentVario <= m_sinkToneOnThreshold) {
+        if (m_currentVolume > 0.0f && m_frequency > 0.0f) {
+            generateTone(m_frequency, m_duration);
+            if (m_audioSink->state() == QAudio::StoppedState ||
+                m_audioSink->state() == QAudio::IdleState) {
+                m_audioSink->start(m_audioBuffer);
+            }
+        }
+    }
+    // Handle silent zone
+    else {
         if (m_audioSink->state() == QAudio::ActiveState) {
             m_audioSink->stop();
         }
+        isBeeping = false;
     }
 
-    // Use a longer update interval for smoother transitions
-    m_toneTimer.start(50);
+    // Always restart timer with duration
+    m_toneTimer.start(m_duration);
 }
 
 void VarioSound::updateVario(qreal vario)
@@ -238,4 +261,3 @@ void VarioSound::stop()
         m_audioBuffer->close();
     }
 }
-
