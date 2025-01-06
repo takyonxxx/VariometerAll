@@ -361,6 +361,8 @@ void MainWindow::updatePressureAndAltitude()
 
     p_dt = elapsedTimeMillis / 1000.0;
 
+    smoothPressure(pressure);
+
     // Update pressure with Kalman filter
     pressure_filter->Update(pressure, KF_VAR_MEASUREMENT, p_dt);
     pressure = pressure_filter->GetXAbs() * 0.01; // Convert to hPa
@@ -380,6 +382,23 @@ void MainWindow::updatePressureAndAltitude()
     updateDisplays();
 
     p_start = p_end;
+}
+
+void MainWindow::smoothPressure(qreal newPressure)
+{
+    static QList<qreal> pressureBuffer;
+    static const int minWindow = 3;
+    static const int maxWindow = 10;
+
+    qreal pressureChangeRate = qAbs(newPressure - pressure);
+    int smoothingWindow = qBound(minWindow, maxWindow - static_cast<int>(pressureChangeRate * 5), maxWindow);
+
+    pressureBuffer.append(newPressure);
+    if (pressureBuffer.size() > smoothingWindow) {
+        pressureBuffer.removeFirst();
+    }
+
+    pressure = std::accumulate(pressureBuffer.begin(), pressureBuffer.end(), 0.0) / pressureBuffer.size();
 }
 
 void MainWindow::getGpsInfo(QList<qreal> info)

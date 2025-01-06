@@ -10,6 +10,8 @@
 #include <QAccelerometer>
 #include <QGyroscope>
 #include <QCompass>
+#include <QAmbientTemperatureSensor>
+#include <QMetaProperty>
 
 class SensorManager : public QThread
 {
@@ -23,6 +25,7 @@ public:
     Q_INVOKABLE QList <qreal> readGyro();
     Q_INVOKABLE QList <qreal> readAcc();
     Q_INVOKABLE QList <qreal> readCompass();
+    Q_INVOKABLE QList <qreal> readTemperature();
 
     void findSensors();
     void startSensors();
@@ -37,6 +40,7 @@ private:
     QAccelerometer* sensorAcc = nullptr;
     QGyroscope* sensorGyro = nullptr;
     QCompass* sensorCompass = nullptr;
+    QAmbientTemperatureSensor* sensorTemperature = nullptr;
 
     void processAccelerometerData();
     static constexpr qreal RAD_TO_DEG = 180.0 / M_PI;

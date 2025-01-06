@@ -27,8 +27,9 @@
 // Constants for atmospheric calculations
 #define SEA_LEVEL_PRESSURE 101325.0f        // Standard sea level pressure in Pascals
 #define SEA_LEVEL_PRESSURE_HPA 1013.25f     // Standard sea level pressure in hPa
-#define KF_VAR_ACCEL 0.001f                 // Default Kalman filter acceleration variance
-#define KF_VAR_MEASUREMENT 0.01f             // Default Kalman filter measurement variance
+
+#define KF_VAR_ACCEL 0.75f                  // Process noise (acceleration variance)
+#define KF_VAR_MEASUREMENT 0.25f           // Measurement noise variance
 
 // Display color constants
 namespace DisplayColors {
@@ -71,7 +72,8 @@ private:
     void initializeSensors();
     void processPressureData(const QList<qreal>& info);
     void updatePressureAndAltitude();
-    void updateDisplays();    
+    void updateDisplays();
+    void smoothPressure(qreal newPressure);
 
     void printInfo(QString info);
 #ifdef Q_OS_ANDROID

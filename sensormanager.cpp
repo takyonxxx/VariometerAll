@@ -57,6 +57,7 @@ void SensorManager::startSensors()
     bool hasAccelerometerSensor = false;
     bool hasGyroscopeSensor = false;
     bool hasCompassSensor = false;
+    bool hasTemperatureSensor = false;
 
     for (QSensor* sensor : mySensorList) {
         if (sensor->type() == QPressureSensor::sensorType) {
@@ -70,6 +71,9 @@ void SensorManager::startSensors()
         }
         else if (sensor->type() == QCompass::sensorType) {
             hasCompassSensor = true;
+        }
+        else if (sensor->type() == QAmbientTemperatureSensor::sensorType) {
+            hasTemperatureSensor = true;
         }
     }
 
@@ -91,6 +95,16 @@ void SensorManager::startSensors()
             qDebug() << "Failed to start QAccelerometer.";
     } else {
         qDebug() << "QAccelerometer not found in SensorList.";
+    }
+
+    if (hasTemperatureSensor) {
+        sensorTemperature = new QAmbientTemperatureSensor(this);
+        if (sensorTemperature->start())
+            qDebug() << "QAmbientTemperatureSensor started.";
+        else
+            qDebug() << "Failed to start QAccelerometer.";
+    } else {
+        qDebug() << "QAmbientTemperatureSensor not found in SensorList.";
     }
 
     // if (hasGyroscopeSensor) {
@@ -138,8 +152,19 @@ void SensorManager::run()
         processAccelerometerData();
         emit sendPressureInfo(readPressure());
         emit sendAccInfo(readAcc());
-        msleep(250);
+        msleep(50);
     }
+}
+
+QList<qreal> SensorManager::readTemperature()
+{
+    QList <qreal> temp;
+    if(!sensorTemperature)
+        return temp;
+
+    temp.clear();
+    temp.append(sensorTemperature->reading()->property("temperature").value<qreal>());
+    return temp;
 }
 
 QList<qreal> SensorManager::readPressure()
@@ -152,6 +177,13 @@ QList<qreal> SensorManager::readPressure()
     temp.append(sensorPressure->reading()->property("pressure").value<qreal>());
     temp.append(sensorPressure->reading()->property("temperature").value<qreal>());
     temp.append(sensorPressure->reading()->property("timestamp").value<qreal>());
+
+    // const QMetaObject *metaObj = sensorPressure->reading()->metaObject();
+    // for (int i = 0; i < metaObj->propertyCount(); ++i) {
+    //     qDebug() << metaObj->property(i).name() << ":"
+    //              << sensorPressure->reading()->property(metaObj->property(i).name());
+    // }
+
     return temp;
 }
 
