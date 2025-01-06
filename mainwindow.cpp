@@ -111,6 +111,7 @@ MainWindow::MainWindow(QWidget *parent)
     , measurementVariance(KF_VAR_MEASUREMENT)
     , gpsaltitude(0.0)
     , baroaltitude(0.0)
+    , vario(0.0)
     , stopReading(false)
     , ui(new Ui::MainWindow)
 {
@@ -133,36 +134,28 @@ MainWindow::MainWindow(QWidget *parent)
         varioSound = new VarioSound(this);
         varioSound->start();
 
-        // QTimer *simTimer = new QTimer(this);
-        // float currentVario = 0.0f;
-        // bool increasing = true;
+        QTimer *simTimer = new QTimer(this);
+        bool increasing = true;
 
-        // connect(simTimer, &QTimer::timeout, this, [this, &currentVario, &increasing]() {
-        //     // Calculate vertical speed
-        //     vario = currentVario;
+        connect(simTimer, &QTimer::timeout, this, [this, &increasing]() {
+            // Adjust currentVario based on direction
+            if (increasing) {
+                this->vario += 0.1f;
+                if (this->vario >= 2.0f) {
+                    increasing = false;  // Switch to decreasing
+                }
+            } else {
+                this->vario -= 0.1f;
+                if (this->vario <= 0.0f) {
+                    increasing = true;  // Switch to increasing
+                }
+            }
 
-        //     if(varioSound)
-        //         varioSound->updateVario(vario);
+            this->updateDisplays();
+            this->varioSound->updateVario(this->vario);
+        });
 
-        //     updateDisplays();
-
-        //     // Adjust vario value
-        //     if (increasing) {
-        //         currentVario += 0.25f;
-        //         if (currentVario >= 5.0f) {
-        //             increasing = false;
-        //             currentVario = 5.0f;
-        //         }
-        //     } else {
-        //         currentVario -= 0.25f;
-        //         if (currentVario <= -5.0f) {
-        //             increasing = true;
-        //             currentVario = -5.0f;
-        //         }
-        //     }
-        // });
-
-        // simTimer->start(1000);
+        simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -369,22 +362,22 @@ void MainWindow::updatePressureAndAltitude()
     p_dt = elapsedTimeMillis / 1000.0;
 
     // Update pressure with Kalman filter
-    // pressure_filter->Update(pressure, KF_VAR_MEASUREMENT, p_dt);
-    // pressure = pressure_filter->GetXAbs() * 0.01; // Convert to hPa
-    pressure = pressure * 0.01; // Convert to hPa
+    pressure_filter->Update(pressure, KF_VAR_MEASUREMENT, p_dt);
+    pressure = pressure_filter->GetXAbs() * 0.01; // Convert to hPa
 
     // Calculate and filter barometric altitude
     baroaltitude = 44330.0 * (1.0 - std::pow(pressure / SEA_LEVEL_PRESSURE_HPA, 0.19));
+
     altitude_filter->Update(baroaltitude, measurementVariance, p_dt);
     baroaltitude = altitude_filter->GetXAbs();
 
     // Calculate vertical speed
-    vario = altitude_filter->GetXVel();
+    // vario = altitude_filter->GetXVel();
 
-    if(varioSound)
-        varioSound->updateVario(vario);
+    // if(varioSound)
+    //     varioSound->updateVario(vario);
 
-    updateDisplays();
+    //updateDisplays();
     p_start = p_end;
 }
 

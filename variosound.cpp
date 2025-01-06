@@ -168,18 +168,12 @@ void VarioSound::calculateSoundCharacteristics()
     else if (m_currentVario >= m_climbToneOnThreshold) {
 
         m_frequency = qBound(750.0f,
-                             static_cast<float>(5.0 * pow(m_currentVario, 3) - 120.0 * pow(m_currentVario, 2) + 850.0 * m_currentVario + 100.0),
+                             750.0f + 1450.0f * (m_currentVario / 5.0f),  // Linear scale from 750 to 2200
                              2200.0f);
 
-        // Calculate duration based on climb rate
-        // Faster climb = shorter duration
-        // Map climb rate to duration: 0.2 m/s -> 600ms, 5.0 m/s -> 200ms
-        // Use linear interpolation
-        float normalizedVario = qBound(0.2f, static_cast<float>(m_currentVario), 5.0f);
-        float durationRange = 750.0f - 100.0f;  // 800ms - 100ms
-        float varioRange = 5.0f - 0.2f;         // 5.0 m/s - 0.2 m/s
+        float durationRange = 400.0f - 50.0f;  // duration range: from 400 ms to 50 ms
+        m_duration = 400.0f - (durationRange * (m_currentVario / 5.0f));
 
-        m_duration = static_cast<int>(750.0f - (durationRange * (normalizedVario - 0.2f) / varioRange)) / 5.0f;
         m_currentVolume = 1.0f;
     }
 }
