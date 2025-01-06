@@ -44,7 +44,7 @@ private:
     float m_frequency{};
     bool m_isRunning{false};
 
-    static constexpr int SAMPLE_RATE = 48000;
+    static constexpr int SAMPLE_RATE = 44100;
     static constexpr int CHANNELS = 2;
 };
 

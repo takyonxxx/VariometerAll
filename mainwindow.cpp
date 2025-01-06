@@ -155,7 +155,7 @@ MainWindow::MainWindow(QWidget *parent)
             this->varioSound->updateVario(this->vario);
         });
 
-        simTimer->start(1000);
+        //simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -372,12 +372,13 @@ void MainWindow::updatePressureAndAltitude()
     baroaltitude = altitude_filter->GetXAbs();
 
     // Calculate vertical speed
-    // vario = altitude_filter->GetXVel();
+    vario = altitude_filter->GetXVel();
 
-    // if(varioSound)
-    //     varioSound->updateVario(vario);
+    if(varioSound)
+        varioSound->updateVario(vario);
 
-    //updateDisplays();
+    updateDisplays();
+
     p_start = p_end;
 }
 

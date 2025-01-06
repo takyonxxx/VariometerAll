@@ -18,19 +18,40 @@ public:
 
     qint64 readData(char *data, qint64 maxSize) override {
         if (m_buffer.isEmpty()) {
-            return 0;
+            memset(data, 0, maxSize);
+            return maxSize;
         }
 
+        // Ensure we're reading complete frames
+        const qint64 frameSize = sizeof(float) * 2; // 2 channels
+        maxSize = (maxSize / frameSize) * frameSize;
+
         qint64 total = 0;
+        float* outputData = reinterpret_cast<float*>(data);
+        const float* inputData = reinterpret_cast<const float*>(m_buffer.constData());
+        const qint64 framesPerChannel = m_buffer.size() / (sizeof(float) * 2);
+
         while (total < maxSize) {
-            if (m_readPosition >= m_buffer.size()) {
-                m_readPosition = 0;  // Loop back to start
+            if (m_readPosition >= framesPerChannel) {
+                m_readPosition = 0;
             }
 
-            qint64 chunk = qMin(maxSize - total, static_cast<qint64>(m_buffer.size() - m_readPosition));
-            memcpy(data + total, m_buffer.constData() + m_readPosition, chunk);
-            m_readPosition += chunk;
-            total += chunk;
+            // Calculate how many frames we can copy
+            qint64 framesToCopy = qMin((maxSize - total) / frameSize,
+                                       framesPerChannel - m_readPosition);
+
+            const float* leftSrc = inputData;
+            const float* rightSrc = inputData + framesPerChannel;
+
+            // Copy maintaining deinterleaved format
+            for (qint64 i = 0; i < framesToCopy; ++i) {
+                outputData[i * 2] = leftSrc[m_readPosition + i];
+                outputData[i * 2 + 1] = rightSrc[m_readPosition + i];
+            }
+
+            m_readPosition += framesToCopy;
+            total += framesToCopy * frameSize;
+            outputData += framesToCopy * 2;
         }
 
         return total;
@@ -83,13 +104,18 @@ void VarioSound::initializeAudio()
 
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
     if (!device.isFormatSupported(format)) {
-        qWarning() << "Requested format not supported, using preferred format";
+        qWarning() << "Requested format not supported, trying to use preferred format";
         format = device.preferredFormat();
     }
 
     m_audioSink = std::make_unique<QAudioSink>(device, format);
-    m_audioSink->setBufferSize(32768); // larger buffer
-    connect(m_audioSink.get(), &QAudioSink::stateChanged, this, &VarioSound::handleAudioStateChanged);
+
+    // For iOS, we want a larger buffer size to prevent underruns
+    const int preferredBufferSize = 32768;  // Adjust this value if needed
+    m_audioSink->setBufferSize(preferredBufferSize);
+
+    connect(m_audioSink.get(), &QAudioSink::stateChanged,
+            this, &VarioSound::handleAudioStateChanged);
 }
 
 void VarioSound::generateTone(float frequency, int durationMs)
@@ -102,39 +128,54 @@ void VarioSound::generateTone(float frequency, int durationMs)
     const int channelCount = CHANNELS;
     const int bytesPerSample = sizeof(float);
     const int totalFrames = (sampleRate * durationMs) / 1000;
-    // Generate full duration of samples
-    const int bufferSize = totalFrames * channelCount * bytesPerSample;
+
+    // For iOS, we need to create deinterleaved buffers
+    // Each channel gets its own continuous block of memory
+    const int singleChannelSize = totalFrames * bytesPerSample;
+    const int totalSize = singleChannelSize * channelCount;
 
     QByteArray audioData;
-    audioData.resize(bufferSize);
+    audioData.resize(totalSize);
     float* data = reinterpret_cast<float*>(audioData.data());
 
-    const float amplitude = m_currentVolume;
+    // Get pointers to the start of each channel's data block
+    float* leftChannel = data;
+    float* rightChannel = data + totalFrames;  // Point to second half of buffer
+
+    const float amplitude = m_currentVolume * 0.5f;
     const float angularFrequency = 2.0f * M_PI * frequency / sampleRate;
 
     static float lastPhase = 0.0f;
     float phase = lastPhase;
 
-    // Generate full duration of samples
-    for (int i = 0; i < totalFrames; ++i) {
-        // Longer attack/release for smoother transitions
-        float envelope = 1.0f;
-        if (i < sampleRate / 100) { // 10ms attack
-            envelope = static_cast<float>(i) / (sampleRate / 100);
-        } else if (i > totalFrames - sampleRate / 100) { // 10ms release
-            envelope = static_cast<float>(totalFrames - i) / (sampleRate / 100);
-        }
+    // Pre-calculate envelope
+    QVector<float> envelope(totalFrames);
+    const int attackSamples = sampleRate / 100;
+    const int releaseSamples = sampleRate / 100;
 
+    for (int i = 0; i < totalFrames; ++i) {
+        if (i < attackSamples) {
+            envelope[i] = static_cast<float>(i) / attackSamples;
+        } else if (i > totalFrames - releaseSamples) {
+            envelope[i] = static_cast<float>(totalFrames - i) / releaseSamples;
+        } else {
+            envelope[i] = 1.0f;
+        }
+    }
+
+    // Generate samples in deinterleaved format
+    for (int i = 0; i < totalFrames; ++i) {
         float freqMod = 1.0f + 0.001f * qSin(2.0f * M_PI * 3.0f * i / totalFrames);
-        float sample = amplitude * qSin(phase) * envelope;
+        float sample = amplitude * qSin(phase) * envelope[i];
         phase += angularFrequency * freqMod;
 
-        if (phase >= 2.0f * M_PI) {
+        while (phase >= 2.0f * M_PI) {
             phase -= 2.0f * M_PI;
         }
 
-        data[i * 2] = sample;
-        data[i * 2 + 1] = sample;
+        // Write the same sample to both channels, but in their separate memory blocks
+        leftChannel[i] = sample;
+        rightChannel[i] = sample;
     }
 
     lastPhase = phase;
@@ -146,34 +187,26 @@ void VarioSound::generateTone(float frequency, int durationMs)
     m_audioBuffer->setAudioData(audioData);
     if (!m_audioBuffer->open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open audio buffer!";
+        return;
     }
 }
 
 void VarioSound::calculateSoundCharacteristics()
 {
-    // First check if we're in the silent zone (including 0)
     if (m_currentVario > m_sinkToneOnThreshold && m_currentVario < m_climbToneOnThreshold) {
-        // Silent zone
         m_duration = 50;
         m_currentVolume = 0.0f;
         m_frequency = 0.0f;
-    }
-    // Then check sink tone
-    else if (m_currentVario <= m_sinkToneOnThreshold) {
+    } else if (m_currentVario <= m_sinkToneOnThreshold) {
         m_frequency = 440.0f;
         m_duration = 800;
         m_currentVolume = 1.0f;
-    }
-    // Finally check climb tone
-    else if (m_currentVario >= m_climbToneOnThreshold) {
-
+    } else if (m_currentVario >= m_climbToneOnThreshold) {
         m_frequency = qBound(750.0f,
-                             750.0f + 1450.0f * (m_currentVario / 5.0f),  // Linear scale from 750 to 2200
+                             750.0f + 1450.0f * (m_currentVario / 5.0f),
                              2200.0f);
-
-        float durationRange = 400.0f - 50.0f;  // duration range: from 400 ms to 50 ms
+        float durationRange = 400.0f - 50.0f;
         m_duration = 400.0f - (durationRange * (m_currentVario / 5.0f));
-
         m_currentVolume = 1.0f;
     }
 }
@@ -192,7 +225,6 @@ void VarioSound::generateNextBuffer()
     static bool isBeeping = false;
     calculateSoundCharacteristics();
 
-    // Handle climb tones with beep pattern
     if (m_currentVario >= m_climbToneOnThreshold) {
         if (isBeeping) {
             if (m_currentVolume > 0.0f && m_frequency > 0.0f) {
@@ -208,9 +240,7 @@ void VarioSound::generateNextBuffer()
             }
         }
         isBeeping = !isBeeping;
-    }
-    // Handle sink tone (continuous)
-    else if (m_currentVario <= m_sinkToneOnThreshold) {
+    } else if (m_currentVario <= m_sinkToneOnThreshold) {
         if (m_currentVolume > 0.0f && m_frequency > 0.0f) {
             generateTone(m_frequency, m_duration);
             if (m_audioSink->state() == QAudio::StoppedState ||
@@ -218,16 +248,13 @@ void VarioSound::generateNextBuffer()
                 m_audioSink->start(m_audioBuffer);
             }
         }
-    }
-    // Handle silent zone
-    else {
+    } else {
         if (m_audioSink->state() == QAudio::ActiveState) {
             m_audioSink->stop();
         }
         isBeeping = false;
     }
 
-    // Always restart timer with duration
     m_toneTimer.start(m_duration);
 }
 
