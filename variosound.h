@@ -27,6 +27,7 @@ private slots:
 
 private:
     void initializeAudio();
+    //void generateTone(float frequency, int durationMs);
     void generateTone(float frequency, int durationMs);
     void calculateSoundCharacteristics();
 

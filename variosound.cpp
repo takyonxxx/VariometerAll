@@ -118,6 +118,33 @@ void VarioSound::initializeAudio()
             this, &VarioSound::handleAudioStateChanged);
 }
 
+void VarioSound::calculateSoundCharacteristics()
+{
+    if (m_currentVario > m_sinkToneOnThreshold && m_currentVario < m_climbToneOnThreshold) {
+        m_duration = 50;
+        m_currentVolume = 0.0f;
+        m_frequency = 0.0f;
+    } else if (m_currentVario <= m_sinkToneOnThreshold) {
+        m_frequency = 440.0f;
+        m_duration = 800;
+        m_currentVolume = 1.0f;
+    } else if (m_currentVario >= m_climbToneOnThreshold) {
+        m_frequency = qBound(750.0f,
+                             750.0f + 1450.0f * (m_currentVario / 5.0f),
+                             2200.0f);
+        float durationRange = 400.0f - 50.0f;
+        m_duration = 400.0f - (durationRange * (m_currentVario / 5.0f));
+        m_currentVolume = 1.0f;
+    }
+}
+
+void VarioSound::handleAudioStateChanged(QAudio::State state)
+{
+    if (state == QAudio::IdleState && m_isRunning) {
+        generateNextBuffer();
+    }
+}
+
 void VarioSound::generateTone(float frequency, int durationMs)
 {
     if (m_currentVolume <= 0.0f || frequency <= 0.0f) {
@@ -188,33 +215,6 @@ void VarioSound::generateTone(float frequency, int durationMs)
     if (!m_audioBuffer->open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open audio buffer!";
         return;
-    }
-}
-
-void VarioSound::calculateSoundCharacteristics()
-{
-    if (m_currentVario > m_sinkToneOnThreshold && m_currentVario < m_climbToneOnThreshold) {
-        m_duration = 50;
-        m_currentVolume = 0.0f;
-        m_frequency = 0.0f;
-    } else if (m_currentVario <= m_sinkToneOnThreshold) {
-        m_frequency = 440.0f;
-        m_duration = 800;
-        m_currentVolume = 1.0f;
-    } else if (m_currentVario >= m_climbToneOnThreshold) {
-        m_frequency = qBound(750.0f,
-                             750.0f + 1450.0f * (m_currentVario / 5.0f),
-                             2200.0f);
-        float durationRange = 400.0f - 50.0f;
-        m_duration = 400.0f - (durationRange * (m_currentVario / 5.0f));
-        m_currentVolume = 1.0f;
-    }
-}
-
-void VarioSound::handleAudioStateChanged(QAudio::State state)
-{
-    if (state == QAudio::IdleState && m_isRunning) {
-        generateNextBuffer();
     }
 }
 
