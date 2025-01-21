@@ -105,12 +105,12 @@ void MainWindow::keepScreenOn()
 #endif
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)    
-    , pressure(SEA_LEVEL_PRESSURE)
+    : QMainWindow(parent)
     , accelVariance(KF_VAR_ACCEL)
     , measurementVariance(KF_VAR_MEASUREMENT)
-    , gpsaltitude(0.0)
+    , pressure(SEA_LEVEL_PRESSURE)
     , baroaltitude(0.0)
+    , gpsaltitude(0.0)
     , vario(0.0)
     , stopReading(false)
     , ui(new Ui::MainWindow)
@@ -192,15 +192,12 @@ void MainWindow::setupUi()
     gridLayout->setSpacing(10);
     gridLayout->setContentsMargins(5, 5, 5, 5);
 
-    hsiWidget = new HSIWidget(this);
-    hsiWidget->setThickness(0.08f);
-    hsiWidget->setHeadingTextOffset(0.4f);
-    hsiWidget->setStyleSheet("background: rgba(22, 39, 54, 0.95);");
+    varioWidget = new VarioWidget(this);
+    varioWidget->setThickness(0.1f);
+    varioWidget->setHeadingTextOffset(0.35f);
+    varioWidget->setStyleSheet("background: rgba(22, 39, 54, 0.95);");
 
-    QScreen *screen = QGuiApplication::primaryScreen();
-    int pixelWidth = screen->size().width();
-    qreal dpi = screen->logicalDotsPerInch();
-    hsiWidget->setMinimumHeight(400);
+    varioWidget->setMinimumHeight(400);
 
     label_vario = new QLabel("0.0 m/s", this);
     label_altitude = new QLabel("0.0 m", this);
@@ -210,7 +207,7 @@ void MainWindow::setupUi()
     pushExit = new QPushButton("EXIT", this);
 
     int row = 0;
-    gridLayout->addWidget(hsiWidget, row++, 0, 1, 3);
+    gridLayout->addWidget(varioWidget, row++, 0, 1, 3);
     gridLayout->addWidget(label_vario, row++, 0, 1, 3);
     gridLayout->addWidget(label_altitude, row++, 0, 1, 3);
     gridLayout->addWidget(label_speed, row++, 0, 1, 3);
@@ -415,8 +412,7 @@ void MainWindow::getGpsInfo(QList<qreal> info)
     longitude = info.at(3);
     groundSpeed = static_cast<int>(info.at(4));
 
-
-    hsiWidget->setHeading(m_heading);
+    varioWidget->setHeading(m_heading);
 
     // Update displays - Fixed ambiguous arg() calls
     if(gpsaltitude != 0)
@@ -452,9 +448,6 @@ void MainWindow::getAccInfo(QList<qreal> info)
 
     m_roll = info.at(0);
     m_pitch = info.at(1);
-
-    hsiWidget->setPitch(m_pitch - 90);
-    hsiWidget->setRoll(m_roll);
 }
 
 void MainWindow::getGyroInfo(QList<qreal> info)
@@ -462,7 +455,6 @@ void MainWindow::getGyroInfo(QList<qreal> info)
     if (stopReading || info.size() < 3) {
         return;
     }
-
 }
 
 void MainWindow::getCompassInfo(QList<qreal> info)
@@ -472,7 +464,7 @@ void MainWindow::getCompassInfo(QList<qreal> info)
     }
 
     m_heading = info.at(0);
-    hsiWidget->setHeading(m_heading);
+    varioWidget->setHeading(m_heading);
 }
 
 void MainWindow::handleExit()

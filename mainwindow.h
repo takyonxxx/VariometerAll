@@ -22,7 +22,7 @@
 #include "readgps.h"
 #include "kalmanfilter.h"
 #include "variosound.h"
-#include "hsiwidget.h"
+#include "variowidget.h"
 
 // Constants for atmospheric calculations
 #define SEA_LEVEL_PRESSURE 101325.0f        // Standard sea level pressure in Pascals
@@ -93,7 +93,7 @@ private:
     QLabel *label_vario;
     QPushButton *pushExit;
 
-    HSIWidget *hsiWidget{nullptr};
+    VarioWidget *varioWidget{nullptr};
 
     // Device managers
     SensorManager* sensorManager{nullptr};   // Pressure and temperature sensor manager

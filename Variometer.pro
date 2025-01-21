@@ -20,12 +20,12 @@ SOURCES += \
 
 HEADERS += \
     KalmanFilter.h \
-    hsiwidget.h \
     mainwindow.h \
     readgps.h \
     sensormanager.h \
     utils.h \
-    variosound.h
+    variosound.h \
+    variowidget.h
 
 FORMS += \
     mainwindow.ui
