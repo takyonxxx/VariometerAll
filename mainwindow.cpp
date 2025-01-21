@@ -155,7 +155,7 @@ MainWindow::MainWindow(QWidget *parent)
             this->varioSound->updateVario(this->vario);
         });
 
-        simTimer->start(1000);
+        //simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -298,15 +298,18 @@ void MainWindow::updateDisplays()
                              .arg(DisplayColors::BACKGROUND);
 
 
-    label_vario->setStyleSheet(varioStyle);
-    label_vario->setText(varioString);
+    if(varioSound)
+        varioSound->updateVario(vario);
 
-    // Format numbers with consistent decimal places
-    label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
+    if(varioWidget)
+        varioWidget->setVerticalSpeed(vario);
+
     if(gpsaltitude == 0)
         label_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 1)));
 
-    varioWidget->setVerticalSpeed(vario);
+    label_vario->setStyleSheet(varioStyle);
+    label_vario->setText(varioString);
+    label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
 }
 
 void MainWindow::initializeFilters()
@@ -373,12 +376,9 @@ void MainWindow::updatePressureAndAltitude()
     baroaltitude = altitude_filter->GetXAbs();
 
     // Calculate vertical speed
-    // vario = altitude_filter->GetXVel();
+    vario = altitude_filter->GetXVel();
 
-    // if(varioSound)
-    //     varioSound->updateVario(vario);
-
-    // updateDisplays();
+    updateDisplays();
 
     p_start = p_end;
 }
