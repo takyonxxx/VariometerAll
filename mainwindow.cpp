@@ -140,13 +140,13 @@ MainWindow::MainWindow(QWidget *parent)
         connect(simTimer, &QTimer::timeout, this, [this, &increasing]() {
             // Adjust currentVario based on direction
             if (increasing) {
-                this->vario += 0.1f;
+                this->vario += 0.25f;
                 if (this->vario >= 2.0f) {
                     increasing = false;  // Switch to decreasing
                 }
             } else {
-                this->vario -= 0.1f;
-                if (this->vario <= 0.0f) {
+                this->vario -= 0.25f;
+                if (this->vario <= -2.0f) {
                     increasing = true;  // Switch to increasing
                 }
             }
@@ -155,7 +155,7 @@ MainWindow::MainWindow(QWidget *parent)
             this->varioSound->updateVario(this->vario);
         });
 
-        //simTimer->start(1000);
+        simTimer->start(1000);
     }
     catch (const std::exception& e) {
         qCritical() << "Fatal error during initialization:" << e.what();
@@ -194,7 +194,7 @@ void MainWindow::setupUi()
 
     varioWidget = new VarioWidget(this);
     varioWidget->setThickness(0.1f);
-    varioWidget->setHeadingTextOffset(0.35f);
+    varioWidget->setHeadingTextOffset(0.4f);
     varioWidget->setStyleSheet("background: rgba(22, 39, 54, 0.95);");
 
     varioWidget->setMinimumHeight(400);
@@ -305,6 +305,8 @@ void MainWindow::updateDisplays()
     label_pressure->setText(QString("%1 hPa").arg(QString::number(pressure, 'f', 1)));
     if(gpsaltitude == 0)
         label_altitude->setText(QString("%1 m").arg(QString::number(baroaltitude, 'f', 1)));
+
+    varioWidget->setVerticalSpeed(vario);
 }
 
 void MainWindow::initializeFilters()
@@ -371,12 +373,12 @@ void MainWindow::updatePressureAndAltitude()
     baroaltitude = altitude_filter->GetXAbs();
 
     // Calculate vertical speed
-    vario = altitude_filter->GetXVel();
+    // vario = altitude_filter->GetXVel();
 
-    if(varioSound)
-        varioSound->updateVario(vario);
+    // if(varioSound)
+    //     varioSound->updateVario(vario);
 
-    updateDisplays();
+    // updateDisplays();
 
     p_start = p_end;
 }

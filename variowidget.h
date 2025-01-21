@@ -106,6 +106,9 @@ private:
         painter.save();
         painter.setClipRect(rect);  // Ensure drawing doesn't go outside the widget
 
+
+
+        drawVariometer(painter, compassRect);
         drawCompass(painter, compassRect);
 
         painter.restore();
@@ -161,19 +164,18 @@ private:
         }
         painter.restore();
 
-        // Draw heading text
-        painter.setPen(Qt::white);
-        QFont font("Tahoma", rect.width() / 8);
+        QString headingText = QString::number(qRound(m_heading));
+        QRectF digitalRect(center.x() - 60, center.y() + innerRadius * 0.55, 120, 40);
+
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(250, 250, 250, 200));
+        painter.drawRoundedRect(digitalRect, 10, 10);
+
+        painter.setPen(Qt::yellow);
+        QFont font("Tahoma", rect.width() / 10);
         font.setBold(true);
         painter.setFont(font);
-        QRectF textRect = rect.adjusted(rect.width() * m_thickness, rect.height() * m_thickness, -rect.width() * m_thickness, -rect.height() * m_thickness);
-
-        // Adjust the vertical position of the text rect
-        float verticalOffset = textRect.height() * m_headingTextOffset;
-        textRect.moveTop(textRect.top() + verticalOffset);
-
-        QString headingText = QString::number(qRound(m_heading));        
-        painter.drawText(textRect, Qt::AlignHCenter | Qt::AlignVCenter, headingText);
+        painter.drawText(digitalRect, Qt::AlignHCenter | Qt::AlignVCenter, headingText);
 
         // Draw heading indicator with increased height
         painter.save();
@@ -190,5 +192,151 @@ private:
         painter.drawPolygon(triangle);
         painter.restore();
     }
+
+    void drawVariometer(QPainter& painter, const QRectF& rect)
+    {
+        QPointF center = rect.center();
+        float outerRadius = rect.width() / 2.0f;
+        float innerRadius = outerRadius * 0.85f;
+
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.save();
+        painter.translate(center);
+
+        // Draw scale background (semicircle)
+        QPainterPath scalePath;
+        float scaleWidth = rect.width() * 0.12f;
+        scalePath.addEllipse(QRectF(-innerRadius, -innerRadius,
+                                    innerRadius * 2, innerRadius * 2));
+        scalePath.addEllipse(QRectF((-innerRadius + scaleWidth), (-innerRadius + scaleWidth),
+                                    (innerRadius - scaleWidth) * 2, (innerRadius - scaleWidth) * 2));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(216, 6, 104 , 150));
+        painter.drawPath(scalePath);
+
+        // Draw tick marks and numbers
+        QFont markFont("Arial", rect.width() * 0.045);
+        markFont.setBold(true);
+        painter.setFont(markFont);
+
+        const int numTicks = 11; // -5 to 5
+        const float angleStep = 180.0f / (numTicks - 1); // Spread over 180 degrees
+
+        for (int i = 0; i < numTicks; i++) {
+            painter.save();
+            float value = -5.0f + i; // Values from -5 to 5
+            float angle = -90.0f + i * angleStep; // Map values to [-90, +90]
+            painter.rotate(angle);
+
+            // Draw ticks
+            painter.setPen(QPen(QColor(232, 243, 245), qAbs(value) == 5.0f || value == 0 ? 3 : 2));
+            float tickStart = innerRadius - scaleWidth;
+            float tickLength = (qAbs(value) == 5.0f || value == 0) ? scaleWidth * 0.8f : scaleWidth * 0.4f;
+            painter.drawLine(QPointF(0, -tickStart),
+                             QPointF(0, -(tickStart + tickLength)));
+
+            // Draw labels for -5.0, 0.0, and 5.0 only
+            if (value == -5.0f || value == 0.0f || value == 5.0f) {
+                painter.rotate(-angle);
+
+                float textRadius = innerRadius - scaleWidth * 1.5;
+                QPointF textPos(
+                    textRadius * std::sin(qDegreesToRadians(angle)),
+                    -textRadius * std::cos(qDegreesToRadians(angle))
+                    );
+
+                QRectF textRect(textPos.x() - 20, textPos.y() - 10, 40, 20);
+
+                // Text background
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(QColor(250, 250, 250, 200));
+                painter.drawRoundedRect(textRect, 5, 5);
+
+                // Draw the label text
+                painter.setPen(value >= 0 ? QColor(0, 150, 0) : QColor(200, 0, 0));
+                QString label = QString::number(value, 'f', 1);
+                painter.drawText(textRect, Qt::AlignCenter, label);
+
+                painter.rotate(angle);
+            }
+
+            painter.restore();
+        }
+
+        // Define colors for positive and negative values
+        QColor needleColor;
+        QColor needleHighlight = QColor(255, 255, 150, 180); // Soft yellow highlight for a polished look
+        QColor needleShadow = QColor(200, 180, 0, 100);    // Subtle shadow with a darker gold tone
+
+        // Determine the color based on vertical speed
+        if (m_verticalSpeed >= 0) {
+            needleColor = QColor(0, 255, 0);  // Green for positive vertical speed (climbing)
+        } else {
+            needleColor = QColor(255, 0, 0);  // Red for negative vertical speed (descending)
+        }
+
+        // Draw indicator needle
+        float angle = (m_verticalSpeed / 5.0f) * 90.0f; // Scale vertical speed to [-90, +90] degrees
+        painter.rotate(angle);
+
+        // Draw needle shaft (increase width for a thicker look)
+        float shaftWidth = rect.width() * 0.0275f;  // Thicker shaft
+        float shaftLength = innerRadius - scaleWidth * 0.8f;  // Shorten the shaft length
+        QRectF needleShaft(-shaftWidth / 2, -shaftLength, shaftWidth, shaftLength);
+
+        QLinearGradient shaftGradient(needleShaft.topLeft(), needleShaft.bottomRight());
+        shaftGradient.setColorAt(0, needleHighlight);
+        shaftGradient.setColorAt(0.5, needleColor);
+        shaftGradient.setColorAt(1, needleShadow);
+
+        painter.setBrush(shaftGradient);
+        painter.setPen(Qt::NoPen);
+        painter.drawRoundedRect(needleShaft, shaftWidth * 0.3, shaftWidth * 0.3);  // More rounded corners for a smooth look
+
+        // Draw needle head (triangular tip)
+        float headBaseWidth = rect.width() * 0.05f;  // Wider base for the head
+        float headLength = rect.width() * 0.08f;     // Shorten the head length
+        QPolygonF needleHead;
+        needleHead << QPointF(0, -shaftLength - headLength)  // Tip of the needle
+                   << QPointF(-headBaseWidth / 2, -shaftLength) // Left base of the triangle
+                   << QPointF(headBaseWidth / 2, -shaftLength); // Right base of the triangle
+
+        QLinearGradient headGradient(needleHead.boundingRect().topLeft(), needleHead.boundingRect().bottomRight());
+        headGradient.setColorAt(0, needleHighlight);
+        headGradient.setColorAt(0.5, needleColor);
+        headGradient.setColorAt(1, needleShadow);
+
+        painter.setBrush(headGradient);
+        painter.drawPolygon(needleHead);
+
+        // Restore painter state
+        painter.restore();
+
+        // Draw central hub
+        QRadialGradient hubGradient(center, rect.width() * 0.08f);
+        hubGradient.setColorAt(0, QColor(220, 220, 220));
+        hubGradient.setColorAt(0.7, QColor(180, 180, 180));
+        hubGradient.setColorAt(1, QColor(150, 150, 150));
+        painter.setBrush(hubGradient);
+        painter.setPen(QPen(QColor(120, 120, 120), 1));
+        painter.drawEllipse(center, rect.width() * 0.06f, rect.width() * 0.06f);
+
+        // Draw digital value display
+        QFont valueFont("Arial", rect.width() * 0.12);
+        valueFont.setBold(true);
+        painter.setFont(valueFont);
+
+        QString speedText = QString::number(m_verticalSpeed, 'f', 1);
+        QRectF digitalRect(center.x() - 60, center.y() + innerRadius * 0.25, 120, 40);
+
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(250, 250, 250, 200));
+        painter.drawRoundedRect(digitalRect, 10, 10);
+
+        painter.setPen(m_verticalSpeed >= 0 ? QColor(0, 150, 0) : QColor(200, 0, 0));
+        painter.drawText(digitalRect, Qt::AlignCenter, speedText);
+    }
+
+
 };
 #endif // VARIOWIDGET_H
