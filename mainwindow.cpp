@@ -349,6 +349,7 @@ void MainWindow::processPressureData(const QList<qreal>& info)
     if (lastPressTimestamp > 0) {
         updatePressureAndAltitude();
     }
+
     lastPressTimestamp = timestamp;
 }
 
